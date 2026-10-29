@@ -1,0 +1,20 @@
+{
+  "user_agent": "B2BResearchAgent/0.1",
+  "max_pages": 3,
+  "max_companies": 3,
+  "delay_seconds": 2,
+  "search": {
+    "provider": "none",
+    "queries": [
+      "оптовая упаковка поставщик каталог"
+    ]
+  },
+  "llm": {
+    "enabled": false,
+    "base_url": "https://api.openai.com/v1",
+    "api_key_env": "B2B_LLM_API_KEY",
+    "model": "gpt-4o-mini"
+  },
+  "sender": "Команда внедрения ИИ-автоматизации",
+  "dns_mode": "proxy"
+}

@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "b2b-research-agent"
+version = "0.1.0"
+description = "Evidence-based B2B research and outreach drafts; no sending"
+requires-python = ">=3.12"
+dependencies = [
+    "crawl4ai>=0.8,<0.9",
+    "pydantic>=2.10,<3",
+    "httpx>=0.28,<1",
+    "beautifulsoup4>=4.12,<5",
+    "protego>=0.4,<1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<9", "pytest-asyncio>=0.25,<2", "ruff>=0.9,<1"]
+
+[project.scripts]
+b2b-agent = "b2b_agent.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/b2b_agent"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
