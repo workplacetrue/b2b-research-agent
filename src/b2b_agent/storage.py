@@ -49,6 +49,15 @@ def safe_cell(value: str) -> str:
 
 
 def export(reports: list[Research], directory: str):
+    reports = sorted(
+        reports,
+        key=lambda r: (
+            r.qualification.interest == "public_request_to_verify",
+            r.score.icp,
+            r.score.automation,
+        ),
+        reverse=True,
+    )
     path = Path(directory)
     path.mkdir(parents=True, exist_ok=True)
     (path / "results.json").write_text(
@@ -61,6 +70,9 @@ def export(reports: list[Research], directory: str):
         "status",
         "icp",
         "automation",
+        "sales",
+        "documents",
+        "qualification",
         "facts",
         "contacts",
         "hypotheses",
@@ -73,11 +85,18 @@ def export(reports: list[Research], directory: str):
         for report in reports:
             data = report.model_dump(mode="json")
             row = {key: data[key] for key in fields if key in data}
-            row.update(icp=report.score.icp, automation=report.score.automation)
+            row.update(
+                icp=report.score.icp,
+                automation=report.score.automation,
+                sales=report.score.sales,
+                documents=report.score.documents,
+            )
             writer.writerow(
                 {
                     k: safe_cell(
-                        json.dumps(v, ensure_ascii=False) if isinstance(v, list) else str(v or "")
+                        json.dumps(v, ensure_ascii=False)
+                        if isinstance(v, (list, dict))
+                        else str(v if v is not None else "")
                     )
                     for k, v in row.items()
                 }

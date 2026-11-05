@@ -56,11 +56,13 @@ async def test_rules_evidence_and_no_invented_contacts():
     assert len(report.contacts) == 2
     assert {c.value for c in report.contacts} == {"sales@supplier.ru", "+74951234567"}
     assert report.score.icp == 100
-    assert report.score.automation == 100
+    assert report.score.sales == 70
+    assert report.score.automation == 70
     assert report.hypotheses
     assert all(set(h.evidence_ids) <= {f.id for f in report.facts} for h in report.hypotheses)
     assert all(f.quote in page().text for f in report.facts)
-    assert "Не знаем" in report.draft
+    assert report.qualification.interest == "unconfirmed"
+    assert "Актуальна ли" in report.draft
 
 
 async def test_no_evidence_no_hypothesis_or_draft():
@@ -238,7 +240,7 @@ async def test_valid_llm_response(monkeypatch):
         "hypotheses": [
             {
                 "statement": "Возможно, заявки обрабатываются вручную",
-                "evidence_ids": [report.facts[0].id],
+                "evidence_ids": [f.id for f in report.facts if f.kind in {"order", "catalog"}],
                 "validation_question": "Какие этапы занимают больше времени?",
             }
         ]
@@ -251,7 +253,8 @@ async def test_valid_llm_response(monkeypatch):
     async with httpx.AsyncClient(transport=transport) as client:
         await analyze(report, Config(llm={"enabled": True}), client)
     assert report.analysis_mode == "llm"
-    assert "Какие этапы" in report.draft
+    assert "Актуальна ли" in report.draft
+    assert "Какие этапы" not in report.draft
     assert report.contacts[0].value == "sales@supplier.ru"
 
 

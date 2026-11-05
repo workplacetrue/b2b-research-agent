@@ -1,11 +1,12 @@
 import csv
 import ipaddress
 import os
-from urllib.parse import urlsplit
+from urllib.parse import urldefrag, urlsplit
 
 import httpx
 
 from .config import Config
+from .models import RequestCandidate
 
 
 def normalize_site(value: str) -> tuple[str, str]:
@@ -52,3 +53,57 @@ async def discover(config: Config, client: httpx.AsyncClient) -> list[str]:
         response.raise_for_status()
         sites.extend(item["url"] for item in response.json().get("web", {}).get("results", []))
     return sites
+
+
+async def discover_requests(config: Config, client: httpx.AsyncClient) -> list[RequestCandidate]:
+    """Search buyer requests separately; a platform URL is never a company website."""
+    if config.search.provider != "brave":
+        raise ValueError("Request search requires search.provider=brave")
+    key = os.environ.get(config.search.api_key_env)
+    if not key:
+        raise ValueError(f"Missing search credential: {config.search.api_key_env}")
+    candidates = {}
+    for query in config.search.request_queries:
+        response = await client.get(
+            "https://api.search.brave.com/res/v1/web/search",
+            params={"q": query, "count": config.search.limit},
+            headers={"X-Subscription-Token": key},
+        )
+        response.raise_for_status()
+        for item in response.json().get("web", {}).get("results", []):
+            url = item.get("url", "")
+            try:
+                normalize_site(url)
+            except ValueError:
+                continue
+            url = urldefrag(url)[0]
+            candidates.setdefault(
+                url,
+                RequestCandidate(
+                    source_url=url,
+                    query=query,
+                    title=item.get("title", ""),
+                    snippet=item.get("description", ""),
+                ),
+            )
+    return list(candidates.values())
+
+
+def read_requests_csv(path: str) -> dict[str, list[str]]:
+    """Operator associates a public request with a company; verify identity separately."""
+    requests = {}
+    with open(path, encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f)
+        if not reader.fieldnames or not {"website", "request_url"} <= set(reader.fieldnames):
+            raise ValueError("Request CSV must contain website and request_url columns")
+        for row in reader:
+            website, url = row.get("website", "").strip(), row.get("request_url", "").strip()
+            if not website and not url:
+                continue
+            normalize_site(website)
+            normalize_site(url)
+            sources = requests.setdefault(website, [])
+            url = urldefrag(url)[0]
+            if url not in sources:
+                sources.append(url)
+    return requests

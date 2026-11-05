@@ -3,7 +3,7 @@ from urllib.parse import urldefrag, urljoin, urlsplit
 
 import httpx
 
-from .analysis import analyze, extract
+from .analysis import analyze, extract, extract_request
 from .config import Config
 from .crawler import Crawler
 from .discovery import discover, normalize_site
@@ -25,8 +25,19 @@ def record_error(store: Store, report: Research, stage: str, error: Exception):
     log.warning("%s %s", report.domain, message)
 
 
-async def run(config: Config, seeds: list[str], store: Store, crawler_factory=Crawler):
+async def run(
+    config: Config,
+    seeds: list[str],
+    store: Store,
+    crawler_factory=Crawler,
+    request_sources: dict[str, list[str]] | None = None,
+):
     results = []
+    requests_by_domain = {}
+    seeds = list(request_sources or {}) + seeds
+    for website, sources in (request_sources or {}).items():
+        domain, _ = normalize_site(website)
+        requests_by_domain.setdefault(domain, []).extend(sources)
     async with httpx.AsyncClient(timeout=config.timeout_seconds, follow_redirects=False) as client:
         try:
             seeds = seeds + await discover(config, client)
@@ -81,13 +92,27 @@ async def run(config: Config, seeds: list[str], store: Store, crawler_factory=Cr
                                     "заказ",
                                     "about",
                                     "price",
+                                    "crm",
+                                    "tender",
+                                    "procurement",
+                                    "закуп",
+                                    "тендер",
                                 )
                             ):
                                 if target not in seen and target not in queue:
                                     queue.append(target)
                     except Exception as error:
                         record_error(store, report, "crawl", error)
-                if report.pages:
+                # Only explicitly supplied sources; never follow their links, extract
+                # platform contacts, or use platform text to score the company's fit.
+                sources = list(dict.fromkeys(requests_by_domain.get(domain, [])))
+                for source_url in sources[: config.max_request_pages]:
+                    try:
+                        source = await crawler.fetch(source_url)
+                        extract_request(source, report)
+                    except Exception as error:
+                        record_error(store, report, "request", error)
+                if report.pages or any(f.kind == "buyer_request" for f in report.facts):
                     try:
                         await analyze(report, config, client)
                     except Exception as error:

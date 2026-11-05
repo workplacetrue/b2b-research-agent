@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "b2b-research-agent"
 version = "0.1.0"
-description = "Evidence-based B2B research and outreach drafts; no sending"
+description = "Evidence-based B2B research and configured email responses to public requests"
 requires-python = ">=3.12"
 dependencies = [
     "crawl4ai>=0.8,<0.9",
