@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "services": [
+    {
+      "id": "sales_intake",
+      "name": "Обработка входящих заявок",
+      "enabled": true,
+      "workflow": "sales_intake",
+      "target_processes": [],
+      "target_profiles": [],
+      "supported_tasks": [
+        "обработка заявок",
+        "приём заказов",
+        "сбор заявок"
+      ],
+      "unsupported_tasks": [],
+      "limitations": [
+        "Объём и совместимость требуют проверки"
+      ],
+      "allowed_claims": [
+        {
+          "text": "Обсуждаем применимость сценария: Обработка входящих заявок",
+          "source": "legacy outreach.workflows",
+          "kind": "capability_declaration",
+          "evidence_ids": []
+        }
+      ],
+      "required_inputs": [],
+      "client_participation": [],
+      "proof_asset_ids": [],
+      "price": {
+        "model": "unknown",
+        "currency": null,
+        "minimum": null,
+        "maximum": null,
+        "dependencies": [],
+        "source": "unknown"
+      },
+      "timing_constraints": [],
+      "team_availability": "unknown",
+      "first_steps": [
+        "проверка применимости"
+      ]
+    },
+    {
+      "id": "sales_quotes",
+      "name": "Подготовка коммерческих предложений",
+      "enabled": true,
+      "workflow": "sales_quotes",
+      "target_processes": [],
+      "target_profiles": [],
+      "supported_tasks": [
+        "коммерческие предложения",
+        "расчёт предложения",
+        "подготовка КП"
+      ],
+      "unsupported_tasks": [],
+      "limitations": [
+        "Объём и совместимость требуют проверки"
+      ],
+      "allowed_claims": [
+        {
+          "text": "Обсуждаем применимость сценария: Подготовка коммерческих предложений",
+          "source": "legacy outreach.workflows",
+          "kind": "capability_declaration",
+          "evidence_ids": []
+        }
+      ],
+      "required_inputs": [],
+      "client_participation": [],
+      "proof_asset_ids": [],
+      "price": {
+        "model": "unknown",
+        "currency": null,
+        "minimum": null,
+        "maximum": null,
+        "dependencies": [],
+        "source": "unknown"
+      },
+      "timing_constraints": [],
+      "team_availability": "unknown",
+      "first_steps": [
+        "проверка применимости"
+      ]
+    },
+    {
+      "id": "sales_followup",
+      "name": "Контроль согласованных повторных продаж",
+      "enabled": true,
+      "workflow": "sales_followup",
+      "target_processes": [],
+      "target_profiles": [],
+      "supported_tasks": [
+        "повторные продажи",
+        "контроль follow-up",
+        "согласованные напоминания"
+      ],
+      "unsupported_tasks": [],
+      "limitations": [
+        "Объём и совместимость требуют проверки"
+      ],
+      "allowed_claims": [
+        {
+          "text": "Обсуждаем применимость сценария: Контроль согласованных повторных продаж",
+          "source": "legacy outreach.workflows",
+          "kind": "capability_declaration",
+          "evidence_ids": []
+        }
+      ],
+      "required_inputs": [],
+      "client_participation": [],
+      "proof_asset_ids": [],
+      "price": {
+        "model": "unknown",
+        "currency": null,
+        "minimum": null,
+        "maximum": null,
+        "dependencies": [],
+        "source": "unknown"
+      },
+      "timing_constraints": [],
+      "team_availability": "unknown",
+      "first_steps": [
+        "проверка применимости"
+      ]
+    },
+    {
+      "id": "documents",
+      "name": "Подготовка и обработка документов",
+      "enabled": true,
+      "workflow": "documents",
+      "target_processes": [],
+      "target_profiles": [],
+      "supported_tasks": [
+        "обработка документов",
+        "подготовка документов",
+        "сверка документов"
+      ],
+      "unsupported_tasks": [],
+      "limitations": [
+        "Объём и совместимость требуют проверки"
+      ],
+      "allowed_claims": [
+        {
+          "text": "Обсуждаем применимость сценария: Подготовка и обработка документов",
+          "source": "legacy outreach.workflows",
+          "kind": "capability_declaration",
+          "evidence_ids": []
+        }
+      ],
+      "required_inputs": [],
+      "client_participation": [],
+      "proof_asset_ids": [],
+      "price": {
+        "model": "unknown",
+        "currency": null,
+        "minimum": null,
+        "maximum": null,
+        "dependencies": [],
+        "source": "unknown"
+      },
+      "timing_constraints": [],
+      "team_availability": "unknown",
+      "first_steps": [
+        "проверка применимости"
+      ]
+    }
+  ]
+}

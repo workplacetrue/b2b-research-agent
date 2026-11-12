@@ -109,7 +109,7 @@ async def test_llm_hostile_question_never_enters_outreach(monkeypatch):
         )
     )
     async with httpx.AsyncClient(transport=transport) as client:
-        await analyze(report, Config(llm={"enabled": True}), client)
+        await analyze(report, Config(llm={"enabled": True}, budget={"tool_prices": {"llm": {"per_call": 0.01, "currency": "USD", "source": "offline mock fixture"}}}, memory={"input_tokens": 12000}), client)
     assert report.draft
     assert not any(word in report.draft for word in ["плохо", "теряете", "50%", "Почему"])
     assert "Актуальна ли" in report.draft
@@ -136,7 +136,7 @@ async def test_llm_cannot_propose_workflow_without_its_evidence(monkeypatch):
     )
     async with httpx.AsyncClient(transport=transport) as client:
         with pytest.raises(ValueError, match="not supported"):
-            await analyze(report, Config(llm={"enabled": True}), client)
+            await analyze(report, Config(llm={"enabled": True}, budget={"tool_prices": {"llm": {"per_call": 0.01, "currency": "USD", "source": "offline mock fixture"}}}, memory={"input_tokens": 12000}), client)
     assert report.draft is None
 
 

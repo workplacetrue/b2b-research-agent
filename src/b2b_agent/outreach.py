@@ -1,4 +1,4 @@
-"""Research concrete public ads and reply only to their explicit response address."""
+"""Inspect public requests and queue individual approvals; never send from discovery."""
 
 import hashlib
 import json
@@ -14,12 +14,6 @@ from pydantic import Field
 from .config import Config
 from .crawler import Crawler, Page
 from .discovery import discover_requests, normalize_site
-from .mail_delivery import (
-    DeliveryRejected,
-    deliver,
-    gmail_access_token,
-    preflight,
-)
 from .models import RequestCandidate, StrictModel
 from .outbox import Outbox
 
@@ -51,7 +45,7 @@ WORKFLOWS = {
 }
 
 
-class ReplyAssessment(StrictModel):
+class OutboundAssessment(StrictModel):
     source_url: str
     title: str = ""
     published_on: date | None = None
@@ -64,6 +58,17 @@ class ReplyAssessment(StrictModel):
     status: str = "needs_review"
     reasons: list[str] = Field(default_factory=list)
     provider_id: str | None = None
+    opportunity_id: str | None = None
+    action_id: str | None = None
+    task_fit: str = "unknown"
+    channel: str = "email"
+    dependency_version: str | None = None
+    catalog_version: str | None = None
+    unknowns: list[str] = Field(default_factory=list)
+
+
+# Historical name describes an outgoing assessment, not an inbound message.
+ReplyAssessment = OutboundAssessment
 
 
 def canonical_ad_url(value: str) -> str:
@@ -156,7 +161,7 @@ def inspect_ad(page: Page, config: Config, now: datetime | None = None) -> Reply
         root.select(
             'nav, footer, aside, script:not([type="application/ld+json"]), '
             'style, noscript, [hidden], [aria-hidden="true"], '
-            ".related, .recommended, .recommendations"
+            ".related, .recommended, .recommendations, blockquote, q"
         )
     ):
         tag.decompose()
@@ -190,54 +195,165 @@ def inspect_ad(page: Page, config: Config, now: datetime | None = None) -> Reply
     ):
         result.reasons = ["Есть признак закрытого запроса или отсутствия спроса"]
         return result
-    if re.search(
+    required_channel = re.search(
         r"не\s+(?:пишите|присылайте|отправляйте).{0,40}(?:почт|email)|"
-        r"(?:отклики|общение|связь).{0,30}только.{0,40}(?:сайт|платформ|бирж|форм|telegram|телеграм)",
+        r"(?:отклик\w*|общение|связь|ответ\w*|пишите).{0,30}(?:только|исключительно|обязательно).{0,40}(?:сайт|платформ|бирж|форм|telegram|телеграм|linkedin)",
         text,
         re.I,
+    )
+    if required_channel:
+        requirement = required_channel.group()
+        result.channel = ("telegram" if re.search(r"telegram|телеграм", requirement, re.I)
+                          else "linkedin" if re.search(r"linkedin", requirement, re.I) else "platform")
+        result.contact_quote = requirement
+    if re.search(r"порнограф|азартн|казино|политическ|мошеннич", text, re.I):
+        result.reasons = ["Исключённое владельцем направление"]
+        return result
+    if re.search(
+        r"(?:архивн(?:ое|ый|ая)\s+(?:объявлен|запрос|проект)|"
+        r"(?:объявлен\w*|запрос|проект)\s+(?:находится\s+)?в\s+архиве|"
+        r"архив\s+(?:объявлений|запросов|проектов))",
+        text, re.I,
+    ) or str(root.get("data-status", "")).casefold() in {"archived", "closed", "expired"} or any(
+        value.casefold() in {"archived", "closed", "expired"} for value in root.get("class", [])
     ):
-        result.reasons = ["В объявлении указан другой обязательный способ отклика"]
+        result.reasons = ["Объявление отмечено как архивное или закрытое"]
+        return result
+    if re.search(
+        r"(?:не\s+для\s+бизнеса|для\s+(?:(?:моих|своих)\s+)?(?:личных|домашних)\s+(?:дел|нужд|задач)|"
+        r"для\s+(?:личного|частного)\s+пользования|для\s+(?:моей|своей|собственной)\s+семьи)",
+        text, re.I,
+    ):
+        result.reasons = ["Личный B2C-запрос: бизнес-заказчик и применимость услуги не подтверждены"]
+        return result
+    if re.search(r"(?:предлагаем|оказываем)\s+услуги|наши\s+клиенты|ищем\s+заказы", text, re.I):
+        result.reasons = ["Публикация исполнителя, а не подтверждённая задача заказчика"]
+        return result
+    # A quoted demand is evidence about a quotation, not about this author's
+    # current procurement. Keep literal text for audit, but require buyer intent
+    # outside quoted passages before preparing an initial response.
+    direct_text = re.sub(r'«[^»]*»|“[^”]*”|"[^"\n]*"', " ", text)
+    if DEMAND.search(text) and not DEMAND.search(direct_text):
+        result.reasons = ["Запрос приведён только как цитата; актуальная задача автора не подтверждена"]
         return result
     if not DEMAND.search(text):
         result.reasons = ["Не найден прямой запрос заказчика на выполнение задачи"]
         return result
-    for workflow, (pattern, _) in WORKFLOWS.items():
-        if workflow in config.outreach.workflows and re.search(pattern, text, re.I):
-            result.workflow = workflow
+    from .workflow import current_catalog
+
+    try:
+        catalog = current_catalog(config)
+    except ValueError:
+        result.reasons = ["Каталог INPUT не прошёл проверку; подготовка обращения приостановлена"]
+        return result
+    offers = [offer for offer in catalog.services if offer.enabled]
+    for offer in offers:
+        workflow = getattr(offer, "workflow", None) or offer.id
+        pattern = WORKFLOWS.get(workflow, (None, None))[0]
+        if workflow not in config.outreach.workflows and workflow in WORKFLOWS:
+            continue
+        supported = list(offer.supported_tasks)
+        matches = bool(pattern and re.search(pattern, text, re.I))
+        matches = matches or any(task.casefold() in text.casefold() for task in supported if task)
+        if matches:
+            result.workflow = offer.id
+            selected = offer
             break
     if not result.workflow:
         result.reasons = ["Задача не соответствует настроенным услугам"]
         return result
-    contacts = {}
-    for match in EMAIL.finditer(text):
-        before = text[max(0, match.start() - 100) : match.start()]
-        if re.search(
-            r"(?:отклик\w*.{0,70}|пишите.{0,70}|присылайте.{0,70}|"
-            r"отправляйте.{0,70}|для связи.{0,45})$",
-            before,
-            re.I,
-        ):
-            if not re.search(r"реклам|поддержк|администрац|support", before, re.I):
-                contacts[match[0].lower()] = before + match[0]
-    if len(contacts) != 1:
-        result.reasons = ["Нужен единственный явно указанный email для откликов в тексте задачи"]
-        return result
-    result.recipient, result.contact_quote = next(iter(contacts.items()))
-    scenario = WORKFLOWS[result.workflow][1]
+    result.task_fit = "full"
+    full_crm = re.search(r"(?:CRM|СРМ).{0,30}(?:полностью|под ключ)|(?:внедрить|внедрение)\s+(?:CRM|СРМ)", text, re.I)
+    if full_crm and not any(
+        re.search(r"(?:CRM|СРМ).{0,30}(?:полностью|под ключ)|(?:внедрить|внедрение)\s+(?:CRM|СРМ)", task, re.I)
+        for task in selected.supported_tasks
+    ):
+        result.task_fit = "partial"
+    if any(task.casefold() in text.casefold() for task in selected.unsupported_tasks if task):
+        result.task_fit = "partial"
+    result.catalog_version = catalog.version
+    result.dependency_version = catalog.dependency_version(selected.id)
+    result.unknowns = ["Компания/полномочия автора пока неизвестны", "Интерес к нашему предложению не подтверждён", "Объём, бюджет и сроки требуют уточнения"]
+    if result.channel != "email":
+        # The page is a manual destination reference, never a customer account
+        # identity or an invented email/Telegram username. An operator must use
+        # the request's actual allowed reply flow after individual approval.
+        result.recipient = result.source_url
+        result.unknowns.append("Адресат/форма выбранного канала требуют ручной проверки перед отправкой")
+    else:
+        contacts = {}
+        for match in EMAIL.finditer(text):
+            before = text[max(0, match.start() - 100) : match.start()]
+            if re.search(
+                r"(?:отклик\w*.{0,70}|пишите.{0,70}|присылайте.{0,70}|"
+                r"отправляйте.{0,70}|для связи.{0,45})$",
+                before,
+                re.I,
+            ):
+                if not re.search(r"реклам|поддержк|администрац|support", before, re.I):
+                    contacts[match[0].lower()] = before + match[0]
+        if len(contacts) != 1:
+            result.reasons = ["Нужен единственный явно указанный email для откликов в тексте задачи"]
+            return result
+        result.recipient, result.contact_quote = next(iter(contacts.items()))
+    from .messaging import price_answer
+
+    scenario = selected.name
+    declaration = next((claim.text for claim in selected.allowed_claims
+                        if claim.kind == "capability_declaration"), "")
     result.subject = f"Отклик на задачу: {result.title}"
+    boundary = ("Поддерживаем только указанный участок; полное внедрение CRM не обещаем. "
+                if result.task_fit == "partial" else "")
     result.body = (
-        f"Здравствуйте!\n\nПишу по вашему объявлению «{result.title}» "
-        f"на {urlsplit(result.source_url).hostname}:\n{result.source_url}\n\n"
-        f"Могу помочь с {scenario}. Готов предложить вариант под ваш бюджет; "
-        "точную стоимость и ближайший реалистичный срок смогу подтвердить после "
-        "уточнения объёма задачи и необходимых доступов.\n\n"
-        "Если задача актуальна, ответьте на это письмо — уточним детали и первый шаг.\n\n"
-        f"{config.outreach.signature or config.sender}"
+        f"Здравствуйте!\n\n{(catalog.sender_profile.name or catalog.sender_profile.brand) or config.sender}. "
+        f"Пишу по вашему объявлению «{result.title}»:\n{result.source_url}\n\n"
+        f"Предлагаем обсудить применимость услуги «{scenario}». {declaration} {boundary}"
+        f"{price_answer(selected)}\n\n"
+        "Актуально ли обсудить этот участок задачи и необходимый объём?\n\n"
+        f"{catalog.sender_profile.signature or config.outreach.signature or config.sender}\n\n"
+        "Если не хотите получать сообщения, ответьте «не писать»."
     )
     fingerprint = result.recipient + "\n" + re.sub(r"\s+", " ", result.title.lower()).strip()
     result.message_key = hashlib.sha256(fingerprint.encode()).hexdigest()
-    result.status, result.reasons = "ready", []
+    result.status = "ready" if result.channel == "email" else "ready_manual"
+    result.reasons = ([] if result.channel == "email" else
+                      ["Указан обязательный канал отклика; подготовлена ручная задача без email-обхода"])
     return result
+
+
+async def cached_request_search(config: Config, client: httpx.AsyncClient, store,
+                                search_fn=None) -> list[RequestCandidate]:
+    """Persist the known answer and reserve every paid query before the search."""
+    import uuid
+
+    from .analysis import assess_external_call
+    from .storage import Store
+    search_fn = search_fn or discover_requests
+    store.db.execute("CREATE TABLE IF NOT EXISTS external_cache (cache_key TEXT PRIMARY KEY,payload TEXT NOT NULL,observed_at TEXT NOT NULL)")
+    store.db.commit()
+    key = "request-search:" + hashlib.sha256(json.dumps({
+        "provider": config.search.provider, "queries": config.search.request_queries,
+        "limit": config.search.limit}, sort_keys=True).encode()).hexdigest()
+    cached = Store.cached(store, key)
+    if cached is not None:
+        return [RequestCandidate.model_validate(item) for item in cached]
+    if not config.search.request_queries:
+        return []
+    operation = "request-search:" + uuid.uuid4().hex
+    reservation = assess_external_call(config, "search", paid=config.search.provider != "none",
+        store=store, reservation_id=operation, run_scope=operation,
+        calls=len(config.search.request_queries))
+    actual_cost = None
+    try:
+        candidates = await search_fn(config, client)
+        if config.budget.tool_prices.get("search", {}).get("per_call") is not None:
+            actual_cost = config.budget.tool_prices["search"]["per_call"] * len(config.search.request_queries)
+        Store.cache(store, key, [candidate.model_dump(mode="json") for candidate in candidates])
+        return candidates
+    finally:
+        if reservation:
+            reservation[0].reconcile(reservation[1], actual_amount=actual_cost,
+                                     billing_known=actual_cost is not None)
 
 
 async def auto_reply(
@@ -253,11 +369,14 @@ async def auto_reply(
             timeout=config.timeout_seconds, follow_redirects=False
         ) as owned:
             return await auto_reply(config, outbox, candidates, dry_run, crawler_factory, owned)
-    sending = config.outreach.enabled and not dry_run
-    if sending:
-        preflight(config.outreach)
-    candidates = candidates if candidates is not None else await discover_requests(config, client)
-    results, seen, attempts, token = [], set(), 0, None
+    # The legacy enabled flag enables transport availability only. Discovery
+    # and draft preparation cannot create an approval or contact a mail service.
+    candidates = candidates if candidates is not None else await cached_request_search(config, client, outbox.workflow)
+    results, seen = [], set()
+    from .analysis import assess_external_call
+    from .workflow import queue_public_request
+    research_steps = 0
+
     async with crawler_factory(config, client) as crawler:
         for candidate in candidates[: config.max_companies]:
             try:
@@ -265,47 +384,43 @@ async def auto_reply(
                 if url in seen:
                     continue
                 seen.add(url)
+                existing = next((action for action in outbox.workflow.list_actions()
+                    if action.get("source_url") == url and action.get("status") in {
+                        "pending_approval", "approved", "deferred", "approved_for_manual_send",
+                        "awaiting_manual_send", "sending", "uncertain", "sent", "simulated_sent"}), None)
+                if existing is not None:
+                    results.append(ReplyAssessment(source_url=url, title=candidate.title,
+                        channel=existing.get("channel", "email"),
+                        recipient=existing.get("recipient"), workflow=existing.get("service_id"),
+                        subject=existing.get("subject"), body=existing.get("body"),
+                        message_key=existing.get("message_key"), status=existing["status"],
+                        action_id=existing["id"], opportunity_id=existing.get("opportunity_id"),
+                        reasons=["Сохранённое действие по этому источнику уже ожидает следующего события; повторное исследование не требуется"]))
+                    continue
+                if research_steps >= config.budget.max_research_steps:
+                    results.append(ReplyAssessment(source_url=url, status="deferred",
+                        reasons=["Достигнут лимит исследовательских шагов; прогресс сохранён"]))
+                    continue
+                assess_external_call(config, "crawl", paid=False, store=outbox.workflow,
+                                     account_id="request:" + hashlib.sha256(url.encode()).hexdigest())
+                research_steps += 1
                 page = await crawler.fetch(candidate.source_url)
                 result = inspect_ad(page, config)
             except Exception as error:
-                results.append(
-                    ReplyAssessment(
-                        source_url=candidate.source_url,
-                        status="research_failed",
-                        reasons=[type(error).__name__],
-                    )
-                )
+                results.append(ReplyAssessment(source_url=candidate.source_url,
+                    status="research_failed", reasons=[type(error).__name__]))
                 continue
             results.append(result)
-            if result.status != "ready":
+            if result.status not in {"ready", "ready_manual"}:
                 continue
-            if not sending:
+            if dry_run:
                 result.status = "dry_run"
                 continue
-            if attempts >= config.outreach.max_per_run:
-                result.status = "run_limit"
+            if not config.outreach.enabled and result.channel == "email":
+                result.status = "draft"
                 continue
-            if config.outreach.provider == "gmail" and token is None:
-                token = await gmail_access_token(config.outreach, client)
-            reservation = outbox.reserve(result.model_dump(mode="json"), config.outreach)
-            if reservation != "reserved":
-                result.status = reservation
-                continue
-            attempts += 1
-            try:
-                result.provider_id = await deliver(
-                    config.outreach,
-                    client,
-                    result.recipient,
-                    result.subject,
-                    result.body,
-                    result.message_key,
-                    gmail_token=token,
-                )
-                result.status = "sent"
-                outbox.finish(result.message_key, "sent", result.provider_id)
-            except Exception as error:
-                result.status = "failed" if isinstance(error, DeliveryRejected) else "uncertain"
-                result.reasons = [type(error).__name__]
-                outbox.finish(result.message_key, result.status, error=type(error).__name__)
+            action = queue_public_request(outbox, result, config)
+            result.action_id = action["id"]
+            result.opportunity_id = action.get("opportunity_id")
+            result.status = action.get("status", "pending_approval")
     return results

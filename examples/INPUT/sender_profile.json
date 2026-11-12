@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "name": "",
+  "brand": "Команда внедрения ИИ-автоматизации",
+  "role": "unknown",
+  "from_email": "",
+  "signature": "",
+  "company_facts": [],
+  "public_links": [],
+  "meeting_owner": "",
+  "source": "legacy config sender/signature"
+}
