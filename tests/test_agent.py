@@ -86,7 +86,7 @@ async def test_llm_unknown_citation_rejected(monkeypatch):
         )
     )
     report = Research(domain="supplier.ru", website="https://supplier.ru")
-    config = Config(llm={"enabled": True})
+    config = Config(llm={"enabled": True}, budget={"tool_prices": {"llm": {"per_call": 0.01, "currency": "USD", "source": "offline mock fixture"}}}, memory={"input_tokens": 12000})
     async with httpx.AsyncClient(transport=transport) as client:
         with pytest.raises(ValueError, match="nonexistent"):
             await analyze(report, config, client)
@@ -251,7 +251,7 @@ async def test_valid_llm_response(monkeypatch):
         )
     )
     async with httpx.AsyncClient(transport=transport) as client:
-        await analyze(report, Config(llm={"enabled": True}), client)
+        await analyze(report, Config(llm={"enabled": True}, budget={"tool_prices": {"llm": {"per_call": 0.01, "currency": "USD", "source": "offline mock fixture"}}}, memory={"input_tokens": 12000}), client)
     assert report.analysis_mode == "llm"
     assert "Актуальна ли" in report.draft
     assert "Какие этапы" not in report.draft
@@ -264,6 +264,6 @@ async def test_llm_missing_key_explicit_failure(monkeypatch):
         with pytest.raises(ValueError, match="Missing LLM credential"):
             await analyze(
                 Research(domain="supplier.ru", website="https://supplier.ru"),
-                Config(llm={"enabled": True}),
+                Config(llm={"enabled": True}, budget={"tool_prices": {"llm": {"per_call": 0.01, "currency": "USD", "source": "offline mock fixture"}}}, memory={"input_tokens": 12000}),
                 client,
             )

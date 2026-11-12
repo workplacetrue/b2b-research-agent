@@ -1,33 +1,20 @@
-# Архитектура и решения
+# Архитектура 2.1
 
-## Поток данных
+`discovery/crawler → analysis → Opportunity/evidence → engagement/messaging → workflow queue → individual approval → outbox guard → mail_delivery`.
 
-`CSV / SearchProvider(Brave) → канонизация сайтов → HTTP+robots → Crawl4AI → факты/контакты → правила или LLM → оценка → черновик → SQLite → CSV/JSON`
+`inbox → conversations → transactional inbound/cancellation/suppression → CompanyStats + CompanyCapsule → next draft/meeting brief`.
 
-Модули разделены по этапам: `discovery`, `crawler`, `analysis`, `pipeline`, `storage`, `cli`. Pydantic-модели запрещают неизвестные поля. Для других поисковых API точка расширения — `discover`; провайдер не скрейпит поисковую выдачу через браузер.
+- `catalog.py`, `INPUT`: frozen versioned owner declarations, proof rights, sender; related dependency hashes invalidate individual actions.
+- `action_policy.py`: deterministic usefulness/expense/hold checks, transactionally reserved scoped budgets, cost policy signatures.
+- `state.py`: SQLite opportunities, conversations, inbound, events, actions, one-use approvals, persistent pauses and scoped suppression. No LLM function can grant approval.
+- `outbox.py`: compatible legacy migration, initial dedupe/cooldown, separate replies/frequency, reservation before transport, final permit rechecks through an independent connection.
+- `mail_delivery.py`: Gmail/SMTP with distinct RFC/provider/thread metadata. Only a server-issued authorization can reach transport.
+- `inbox.py`: bounded Gmail sync, opaque cursor, partial history recovery, MIME/JSON imports. A complete sync barrier is required for dialogue dispatch.
+- `conversations.py`, `engagement.py`, `messaging.py`, `meetings.py`: multi-label intents, stop priority, truthful bounded templates, one next step, explicit meeting events and source-linked handoff brief.
+- `company_stats.py`, `memory.py`: derived counters and compact source-linked context; total prompt budget includes system/tools.
+- `channels.py`, `unsubscribe.py`: explicit delivery capabilities/manual lifecycle, shared suppression, offline-testable tokenized HTTPS POST ledger and protected sync. Hosting is separately configured.
+- `workflow.py`, `ops_cli.py`: concrete operator controls and final consistency/cost checks shared by legacy paths.
 
-Факт — наблюдаемая цитата, URL и локальный ID. Гипотеза — предположение с ID фактов, низкой/средней уверенностью, направлением и вопросом для внутренней проверки. Публичный контакт — буквальное значение на странице, тип и источник. Наличие каталога или формы не доказывает ручной труд. LLM получает только факты, не создаёт контакты или факты; неизвестные ссылки на доказательства и направления без соответствующих цитируемых сигналов отклоняются. Содержание гипотез и вопросов всё равно проверяет человек. Черновик собирается из фиксированных нейтральных сценариев: цитаты сайтов и вопросы LLM в него не попадают. Режим исследования компаний сам не отправляет эти черновики; отдельный режим откликов описан ниже.
+Research quality, semantic stage, transport outcome and restrictions are independent. Unknown company identity is retained for public requests, using request/opportunity identity rather than marketplace domains. Source text is data; no source text changes policy, credentials, sender or permissions.
 
-## Автоматический отклик на объявление
-
-`outreach.auto_reply`: поиск публичных запросов либо входной JSON кандидатов → HTTP/robots через Crawler → консервативное выделение одного объявления → явный контакт для откликов, дата и совпадение услуг → шаблон → Outbox.reserve → Gmail API или SMTP/TLS → результат. Пользователь разрешил автоматические отклики; после настройки и включения режима ручного подтверждения каждого письма нет. Неоднозначные страницы сохраняются для проверки без отправки.
-
-`mail_delivery` обновляет Gmail OAuth access token и отправляет MIME через Gmail API. SMTP вынесен в отдельный поток, TLS обязателен. API и SMTP не повторяют отправку после ошибок. HTTP 4xx и явные SMTP-отказы дают failed; таймауты, ошибки протокола и HTTP 5xx — uncertain. Во всех случаях запись сохраняется и повторный автоматический отклик блокируется. Gmail не предоставляет здесь идемпотентного API, поэтому гарантия приложения — не больше одной попытки для записи при использовании общей постоянной БД, с возможными пропусками после аварии.
-
-`outbox.Outbox` использует SQLite BEGIN IMMEDIATE для проверки исключённых адресов, дублей по объявлению/отпечатку, паузы адресата и суточного лимита с резервированием sending в одной транзакции. Письмо и доказательство контакта сохраняются до сетевого запроса. Статус sent означает принятие сервисом, а не доставку. Входящие ответы не обрабатываются; оператор ведёт исключения через suppress-email. Изменение файла БД или работа с разными БД обходит историю дедупликации — для периодического агента нужен один постоянный путь.
-
-`find-requests` ищет публичные запросы отдельно от сайтов компаний. Поисковые URL и сниппеты сохраняются как непроверенные кандидаты, без автоматической привязки площадки к компании. Оператор сопоставляет точную публикацию и сайт через `--requests-csv`. Внешний источник получает тот же HTTP/robots-контроль, но его ссылки не обходятся, контакты не извлекаются, сигналы ниши не используются для оценки компании. Ссылка и буквальная цитата запроса сохраняются как `buyer_request`. Подтверждение автора, даты, открытого статуса и связи с компанией остаётся ручным. Время наблюдения не является датой публикации.
-
-SQLite содержит последнее исследование каждого домена (JSON в таблице companies) и отдельный журнал errors. Повторный запуск обновляет исследование по первичному ключу; факты/гипотезы сохраняются отдельными массивами внутри структуры, без смешивания. Исторические версии исследований пока не сохраняются. Параметризованные SQL-запросы, транзакции, UTC-время исследования. Ошибка одной страницы не прерывает другие компании. Экспорт run относится к текущему запуску, export — ко всем текущим записям БД.
-
-Обход ограничен точным origin, числом компаний/страниц, задержкой, размером HTML 2 MB. Сначала robots.txt: 404 допускает обход, другие ошибки запрещают его. Учитываются Crawl-delay и Request-rate, 429/403 не обходятся; автоматических повторов нет. Редиректы намеренно не переходятся: укажите канонический адрес. Query-ссылки, внешние сайты, скрипты, изображения, формы, PDF не загружаются. HTTPX сохраняет штатные TLS/proxy-настройки. Crawl4AI AsyncHTTPCrawlerStrategy обрабатывает только уже полученный raw HTML; Chromium не нужен.
-
-Локальная проверка DNS блокирует приватные адреса. Для управляемой среды с proxy-only DNS есть явный `dns_mode: proxy`: HTTPS_PROXY обязателен, проверка адресов назначения возлагается на доверенный egress-прокси. Не используйте этот режим с недоверенным/неограниченным прокси и произвольными пользовательскими seed. Защита от DNS rebinding не абсолютна; для production нужен сетевой запрет частных диапазонов независимо от приложения.
-
-Оценка воспроизводима: ICP = 60 за термин ниши + 40 за B2B-сигнал. Продажи = 40 за обращения/заказ, 30 за каталог, 15 за CRM и 15 за повторные продажи; документы = 50 при наличии соответствующего сигнала. `automation = max(sales, documents)`. Это индикаторы для исследования, не проценты вероятности покупки или оценки качества процессов. Для черновика нужен ICP 100 и гипотеза с соответствующими доказательствами. Старые записи SQLite читаются благодаря значениям по умолчанию; пересчёт оценок происходит при повторном исследовании.
-
-`qualification` отдельно хранит неподтверждённый интерес либо найденный публичный запрос, требующий проверки, его ID доказательств и следующий шаг. Правила исключают некоторые очевидные предложения услуг, отрицания, закрытые запросы и рекламные вопросы, но не заменяют смысловую проверку: пересказы, цитаты, давние и неоднозначные публикации возможны. В MVP нет статуса подтверждённого покупателя, проверки бюджета и переписки с клиентом. Персональная и контактная информация требует ручной проверки актуальности и применимых правил использования.
-
-## Архитектурный ориентир
-
-Изучен [professai/leadforge](https://github.com/professai/leadforge), commit `7efa391f390ce5cc24b6e22dc539cda2da6747cd`: README, pyproject, модули и pipeline. Лицензия MIT, copyright (c) 2026 Collin Paran. Условия требуют сохранить уведомление при копировании кода или существенных частей. Код и тексты проекта сюда не переносились; реализация самостоятельная. Общий ориентир — композиция discovery → scraping → scoring → drafting. Генерация email по шаблону, enrichment через реестры США и трекинг рассылок сознательно не используются.
+No automatic retry follows uncertain/surviving sending. A committed opt-out prevents a new dispatch; external mail acceptance and later inbox receipt cannot form one atomic transaction. This boundary is documented rather than represented as a delivery guarantee.

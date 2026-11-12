@@ -7,7 +7,7 @@ from pathlib import Path
 import httpx
 
 from .config import Config, load_config
-from .discovery import discover_requests, read_csv, read_requests_csv
+from .discovery import read_csv, read_requests_csv
 from .mail_delivery import DeliveryConfigurationError
 from .models import RequestCandidate
 from .outbox import Outbox
@@ -18,7 +18,7 @@ from .storage import Store, export
 
 def main():
     parser = argparse.ArgumentParser(
-        description="B2B research and configured responses to public ads"
+        description="B2B research, approved outreach, replies and first meetings"
     )
     sub = parser.add_subparsers(dest="command", required=True)
     init = sub.add_parser("init")
@@ -38,7 +38,8 @@ def main():
     requests = sub.add_parser("find-requests", help="Find public requests for operator review")
     requests.add_argument("--config", default="config.json")
     requests.add_argument("--output", default="output")
-    replies = sub.add_parser("auto-reply", help="Research ads and send configured email responses")
+    requests.add_argument("--db", default="output/research.sqlite")
+    replies = sub.add_parser("auto-reply", help="Research ads and prepare individually approved drafts (never sends)")
     replies.add_argument("--config", default="config.json")
     replies.add_argument(
         "--requests-json", help="Candidate JSON from find-requests; pages are rechecked"
@@ -49,10 +50,20 @@ def main():
     suppress = sub.add_parser("suppress-email", help="Block further responses to a recipient")
     suppress.add_argument("--email", required=True)
     suppress.add_argument("--db", default="output/research.sqlite")
+    from .ops_cli import COMMANDS, handle, register
+    register(sub)
     args = parser.parse_args()
+    if args.command in COMMANDS:
+        try:
+            return handle(args)
+        except (ValueError, KeyError, OSError) as error:
+            print(str(error))
+            return 2
     if args.command == "init":
         with Path(args.config).open("x", encoding="utf-8") as f:
             f.write(json.dumps(Config().model_dump(), ensure_ascii=False, indent=2))
+        from .catalog import initialize_input
+        initialize_input(Config().input_path, Config())
         return 0
     if args.command == "suppress-email":
         box = Outbox(args.db)
@@ -77,10 +88,12 @@ def main():
     try:
         if args.command == "find-requests":
             config = load_config(args.config)
+            box = Outbox(args.db)
 
             async def search():
+                from .outreach import cached_request_search
                 async with httpx.AsyncClient(timeout=config.timeout_seconds) as client:
-                    return await discover_requests(config, client)
+                    return await cached_request_search(config, client, box.workflow)
 
             candidates = asyncio.run(search())
             (Path(args.output) / "request_candidates.json").write_text(

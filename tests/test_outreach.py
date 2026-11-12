@@ -45,7 +45,8 @@ def test_inspect_explicit_reply_contact_and_cautious_offer():
     assert "buyer@customer.ru" in result.contact_quote
     assert "support@platform.ru" not in result.contact_quote
     assert result.source_url in result.body
-    assert "под ваш бюджет" in result.body
+    assert "под ваш бюджет" not in result.body
+    assert "стоимость" in result.body.lower()
     assert "после уточнения" in result.body
     assert "за сжатые сроки" not in result.body
 
@@ -58,7 +59,6 @@ def test_inspect_explicit_reply_contact_and_cautious_offer():
         (ad_page(email="Контакты площадки: support@platform.ru"), "явно указанный email"),
         (ad_page(email="Пишите на first@customer.ru или second@customer.ru"), "единственный"),
         (ad_page(extra="<p>Проект закрыт, исполнитель найден.</p>"), "закрытого"),
-        (ad_page(extra="<p>Отклики принимаются только через сайт.</p>"), "обязательный"),
         (ad_page(extra="<p>Вакансия, полный рабочий день.</p>"), "вакансия"),
         (ad_page(published=""), "Дата публикации"),
         (ad_page(extra='<time datetime="2026-10-28"></time>'), "неоднозначна"),
@@ -158,7 +158,7 @@ def gmail_credentials(monkeypatch):
         monkeypatch.setenv(name, "fake-test-value")
 
 
-async def test_gmail_pipeline_sends_once_and_persists_payload(tmp_path, monkeypatch):
+async def test_gmail_pipeline_queues_once_then_individually_approved_delivery(tmp_path, monkeypatch):
     gmail_credentials(monkeypatch)
     calls = []
 
@@ -185,8 +185,19 @@ async def test_gmail_pipeline_sends_once_and_persists_payload(tmp_path, monkeypa
             second = await auto_reply(
                 mail_config(), box, candidates, crawler_factory=FakeCrawler, client=client
             )
-        assert first[0].status == "sent"
-        assert second[0].status == "duplicate"
+        assert first[0].status == second[0].status == "pending_approval"
+        assert not calls  # The old enabled flag does not authorize OAuth or send.
+        assert first[0].action_id == second[0].action_id
+        assert len(box.workflow.list_actions()) == 1
+        from b2b_agent.workflow import dispatch_action
+        box.workflow.approve_action(first[0].action_id, "owner")
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            sent = await dispatch_action(box, first[0].action_id, mail_config(), client)
+        assert sent["status"] == "sent"
+        from b2b_agent.outbox import DispatchBlocked
+        with pytest.raises(DispatchBlocked):
+            async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+                await dispatch_action(box, first[0].action_id, mail_config(), client)
         assert sum(r.url.host == "gmail.googleapis.com" for r in calls) == 1
         status, stored = box.db.execute("SELECT status,payload FROM outbound_messages").fetchone()
         assert status == "sent" and json.loads(stored)["body"] == first[0].body
@@ -212,8 +223,15 @@ async def test_timeout_is_uncertain_and_is_not_retried(tmp_path, monkeypatch):
             second = await auto_reply(
                 mail_config(), box, candidates, crawler_factory=FakeCrawler, client=client
             )
-        assert first[0].status == "uncertain"
-        assert second[0].status == "duplicate"
+        assert first[0].status == second[0].status == "pending_approval"
+        from b2b_agent.outbox import DispatchBlocked
+        from b2b_agent.workflow import dispatch_action
+        box.workflow.approve_action(first[0].action_id, "owner")
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            with pytest.raises(httpx.ReadTimeout):
+                await dispatch_action(box, first[0].action_id, mail_config(), client)
+            with pytest.raises(DispatchBlocked):
+                await dispatch_action(box, first[0].action_id, mail_config(), client)
         assert box.db.execute("SELECT status FROM outbound_messages").fetchone()[0] == "uncertain"
     finally:
         box.close()
@@ -248,7 +266,7 @@ def test_missing_gmail_configuration_is_actionable(monkeypatch):
         preflight(mail_config().outreach)
 
 
-async def test_smtp_uses_tls_and_single_explicit_recipient(monkeypatch):
+async def test_smtp_uses_tls_and_single_explicit_recipient(monkeypatch, tmp_path):
     calls = []
 
     class SMTP:
@@ -273,6 +291,60 @@ async def test_smtp_uses_tls_and_single_explicit_recipient(monkeypatch):
     monkeypatch.setenv("OUTREACH_SMTP_PASSWORD", "fake-app-password")
     config = mail_config(provider="smtp", smtp_host="smtp.gmail.com").outreach
     preflight(config)
-    async with httpx.AsyncClient() as client:
-        await deliver(config, client, "buyer@customer.ru", "Отклик", "Здравствуйте!", "key1")
-    assert len(calls) == 1 and calls[0]["To"] == "buyer@customer.ru"
+    box = Outbox(str(tmp_path / "smtp.sqlite"))
+    try:
+        action = box.workflow.queue_action({**payload(), "id": "smtp-test", "sender_account": config.from_email,
+            "dependency_version": "test", "contact_permission": {"status": "allowed"}, "assessment": {"allowed": True, "decision": "propose_message"}})
+        box.workflow.approve_action(action["id"], "owner")
+        authorization = box.authorize_delivery(action["id"], config, current_dependencies="test")
+        async with httpx.AsyncClient() as client:
+            await deliver(config, client, action["recipient"], action["subject"], action["body"], action["message_key"], authorization=authorization)
+        assert len(calls) == 1 and calls[0]["To"] == "buyer@customer.ru"
+    finally:
+        box.close()
+
+
+@pytest.mark.parametrize("requirement,channel", [
+    ("Отклики принимаются только через сайт.", "platform"),
+    ("Отклики принимаются только через Telegram.", "telegram"),
+    ("Отклики принимаются только через LinkedIn.", "linkedin"),
+])
+def test_required_platform_prepares_manual_draft_without_email_bypass(requirement, channel):
+    page = ad_page(extra=f"<p>{requirement}</p>")
+    result = inspect_ad(page, mail_config(), NOW)
+    assert result.status == "ready_manual" and result.channel == channel
+    assert result.recipient == result.source_url
+    assert result.recipient != "buyer@customer.ru"
+    assert result.body and requirement.rstrip(".") in result.contact_quote
+    assert "обязательный" in result.reasons[0]
+
+
+async def test_mandatory_manual_channel_queues_when_email_transport_disabled_and_never_sends(tmp_path):
+    from b2b_agent.channels import confirm_manual_sent
+    from b2b_agent.workflow import current_catalog, dispatch_action
+    class ManualCrawler(FakeCrawler):
+        async def fetch(self, url):
+            return ad_page(extra="<p>Отклики принимаются только через сайт.</p>",
+                           published=datetime.now(UTC).date().isoformat())
+    calls = []
+    def unexpected_transport(request):
+        calls.append(str(request.url))
+        raise AssertionError("A manual platform task must not contact an email service")
+    box = Outbox(str(tmp_path / "manual.sqlite"))
+    config = mail_config(enabled=False)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(unexpected_transport)) as client:
+        results = await auto_reply(config, box, [RequestCandidate(source_url="https://platform.ru/projects/123", query="test")],
+                                   crawler_factory=ManualCrawler, client=client)
+        assert results[0].status == "pending_approval" and results[0].channel == "platform"
+        action_id = results[0].action_id
+        with pytest.raises(ValueError, match="approval"):
+            await dispatch_action(box, action_id, config, client)
+        box.workflow.approve_action(action_id, "owner")
+        result = await dispatch_action(box, action_id, config, client)
+        assert result["status"] == "awaiting_manual_send"
+        assert box.db.execute("SELECT COUNT(*) FROM outbound_messages").fetchone()[0] == 0
+        dependency = current_catalog(config).dependency_version(result["service_id"])
+        final = confirm_manual_sent(box.workflow, action_id, actor="owner", current_dependencies=dependency)
+        assert final["status"] == "sent_confirmed_by_user"
+        assert not calls
+    box.close()

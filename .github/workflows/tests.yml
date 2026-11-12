@@ -3,11 +3,13 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      CRAWL4_AI_BASE_DIRECTORY: ${{ github.workspace }}/.crawl-cache
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: '3.12'
       - run: uv sync --frozen --extra dev
-      - run: uv run ruff check src tests
+      - run: uv run ruff check src tests examples/offline
       - run: uv run pytest -q

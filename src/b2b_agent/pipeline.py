@@ -1,9 +1,12 @@
+import hashlib
+import json
 import logging
+import uuid
 from urllib.parse import urldefrag, urljoin, urlsplit
 
 import httpx
 
-from .analysis import analyze, extract, extract_request
+from .analysis import analyze, assess_external_call, assess_research, extract, extract_request
 from .config import Config
 from .crawler import Crawler
 from .discovery import discover, normalize_site
@@ -33,6 +36,8 @@ async def run(
     request_sources: dict[str, list[str]] | None = None,
 ):
     results = []
+    run_id = uuid.uuid4().hex
+    research_steps = 0
     requests_by_domain = {}
     seeds = list(request_sources or {}) + seeds
     for website, sources in (request_sources or {}).items():
@@ -40,7 +45,18 @@ async def run(
         requests_by_domain.setdefault(domain, []).extend(sources)
     async with httpx.AsyncClient(timeout=config.timeout_seconds, follow_redirects=False) as client:
         try:
-            seeds = seeds + await discover(config, client)
+            cache_key = "discovery:" + hashlib.sha256(json.dumps(config.search.model_dump(), sort_keys=True).encode()).hexdigest()
+            discovered = store.cached(cache_key)
+            if discovered is None:
+                reservation = assess_external_call(config, "search", paid=config.search.provider != "none" and bool(config.search.queries),
+                    store=store, reservation_id=f"{run_id}:search", calls=len(config.search.queries), run_scope=run_id)
+                try:
+                    discovered = await discover(config, client)
+                finally:
+                    if reservation:
+                        reservation[0].reconcile(reservation[1], billing_known=False)
+                store.cache(cache_key, discovered)
+            seeds = seeds + discovered
         except Exception as error:
             report = Research(domain="discovery", website="")
             record_error(store, report, "search", error)
@@ -64,6 +80,10 @@ async def run(
                         continue
                     seen.add(url)
                     try:
+                        if research_steps >= config.budget.max_research_steps:
+                            raise ValueError("Research step budget exhausted; remaining work is on hold")
+                        assess_external_call(config, "crawl", paid=False, store=store, account_id=domain)
+                        research_steps += 1
                         page = await crawler.fetch(url)
                         report.pages.append(page.url)
                         extract(page, report, config)
@@ -108,13 +128,25 @@ async def run(
                 sources = list(dict.fromkeys(requests_by_domain.get(domain, [])))
                 for source_url in sources[: config.max_request_pages]:
                     try:
+                        if research_steps >= config.budget.max_research_steps:
+                            raise ValueError("Research step budget exhausted; request is on hold")
+                        assess_external_call(config, "crawl", paid=False, store=store, account_id=domain)
+                        research_steps += 1
                         source = await crawler.fetch(source_url)
                         extract_request(source, report)
                     except Exception as error:
                         record_error(store, report, "request", error)
                 if report.pages or any(f.kind == "buyer_request" for f in report.facts):
                     try:
-                        await analyze(report, config, client)
+                        await analyze(report, config, client, policy_store=store, run_scope=run_id)
+                        from .workflow import current_catalog
+                        catalog = current_catalog(config)
+                        opportunity = assess_research(report, catalog)
+                        report.assessment = opportunity.assessment.model_dump(mode="json")
+                        store.save_snapshot("catalog", catalog.model_dump(mode="json"))
+                        from .state import WorkflowStore
+                        workflow = WorkflowStore(":memory:", db=store.db)
+                        workflow.put_opportunity(opportunity.model_dump(mode="json"))
                     except Exception as error:
                         record_error(store, report, "analysis", error)
                     report.status = "partial" if report.errors else "ok"
