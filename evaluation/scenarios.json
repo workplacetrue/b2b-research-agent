@@ -1,0 +1,906 @@
+[
+  {
+    "id": "TZ-18.01",
+    "priority": "P1",
+    "title": "Наблюдение и гипотеза",
+    "contract": "На эталонном входе interest=unconfirmed; evidence IDs существуют.",
+    "semantic": "Каталог/форма не превращены в утверждение о ручном труде и потерях.",
+    "tests": [
+      "tests/test_v2_research.py::test_independent_fit_does_not_require_legacy_icp100",
+      "tests/test_qualification.py::test_sales_and_documents_are_distinct_from_interest"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Каталог/форма не превращены в утверждение о ручном труде и потерях.",
+    "offline_boundary": "Покрыто: интерес unconfirmed, независимый contactability, отсутствие «вручную»/«теряете» в черновике."
+  },
+  {
+    "id": "TZ-18.02",
+    "priority": "P1",
+    "title": "Вакансия и инвестиции",
+    "contract": "Событие сохранено с датой/источником; бюджет остаётся unknown.",
+    "semantic": "Повод не выдан за подтверждённый спрос или бюджет.",
+    "tests": [
+      "tests/test_catalog.py::test_hiring_or_funding_is_an_observation_without_demand_or_budget",
+      "tests/test_outreach.py::test_ineligible_ads_are_not_sent"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Повод не выдан за подтверждённый спрос или бюджет.",
+    "offline_boundary": "Покрыто отдельными fixtures вакансии/инвестиций: business_event evidence, unconfirmed interest, unknown timing, бюджет остаётся unknown."
+  },
+  {
+    "id": "TZ-18.03",
+    "priority": "P1",
+    "title": "Запрос вне стартовой ниши",
+    "contract": "На размеченном запросе выбран поддерживаемый service_id, нет keyword-only reject.",
+    "semantic": "Соответствие задаче оценено по существу.",
+    "tests": [
+      "tests/test_v2_research.py::test_public_demand_outside_niche_stays_public_need"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Соответствие задаче оценено по существу.",
+    "offline_boundary": "Покрыто: public_need при unknown account_fit/contactability."
+  },
+  {
+    "id": "TZ-18.04",
+    "priority": "P0",
+    "title": "Автор и актуальность запроса",
+    "contract": "Fixtures: продавец, вакансия, цитата, архив, closed/future; нет разрешённого buyer send.",
+    "semantic": "Правильно определены заказчик, запрос и его границы.",
+    "tests": [
+      "tests/test_catalog.py::test_archived_quoted_and_explicit_personal_requests_are_not_buyer_responses",
+      "tests/test_outreach.py::test_ineligible_ads_are_not_sent",
+      "tests/test_outreach.py::test_listing_is_not_a_single_ad",
+      "tests/test_qualification.py::test_seller_negation_closed_and_unrelated_are_not_demand"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Правильно определены заказчик, запрос и его границы.",
+    "offline_boundary": "Покрыто архивный текст/data-status/class, HTML/plaintext цитата, явно личное использование, отрицательные даты/источники и площадка. Неизвестное имя бизнес-заказчика само по себе не отклоняется."
+  },
+  {
+    "id": "TZ-18.05",
+    "priority": "P0",
+    "title": "Идентификация заказчика",
+    "contract": "Два покупателя на площадке имеют разные ID; дубли одного запроса не создают два initial.",
+    "semantic": "Сложные случаи тождества клиентов отправляются на разбор.",
+    "tests": [
+      "tests/test_catalog.py::test_platform_customers_stay_distinct_but_crosspost_is_one_initial",
+      "tests/test_outreach.py::test_tracking_parameters_do_not_create_new_listing"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Сложные случаи тождества клиентов отправляются на разбор.",
+    "offline_boundary": "Покрыто: разные recipient сохраняют разные opportunity; одинаковые recipient+title используют прежний logical key. Семантические перефразы заголовка остаются ограничением fingerprint."
+  },
+  {
+    "id": "TZ-18.06",
+    "priority": "P0",
+    "title": "Частичная поддержка задачи",
+    "contract": "В эталонном кейсе full CRM при intake-only даёт partial/unknown, без full-scope action.",
+    "semantic": "Текст ясно ограничивает объём и не обещает весь проект.",
+    "tests": [
+      "tests/test_catalog.py::test_whole_crm_request_cannot_expand_intake_offer"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Текст ясно ограничивает объём и не обещает весь проект.",
+    "offline_boundary": "Покрыто: partial и явная граница предложения."
+  },
+  {
+    "id": "TZ-18.07",
+    "priority": "P0",
+    "title": "Допустимость контакта",
+    "contract": "Неизвестный/непроверенный контакт: dispatch=0; исследование и draft доступны.",
+    "semantic": "Качество объяснения блокировки.",
+    "tests": [
+      "tests/test_state.py::test_unknown_permission_blocks_even_approved",
+      "tests/test_policy.py::test_terminal_defer_pause_and_commercial_boundaries"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Качество объяснения блокировки.",
+    "offline_boundary": "Покрыто: approval не снимает contact_policy."
+  },
+  {
+    "id": "TZ-18.08",
+    "priority": "P0",
+    "title": "Согласование legacy-режима",
+    "contract": "Включённый старый режим без approval даёт pending_approval; transport.calls=0.",
+    "semantic": "—",
+    "tests": [
+      "tests/test_outreach.py::test_gmail_pipeline_queues_once_then_individually_approved_delivery",
+      "tests/test_inbox.py::test_delivery_without_approval_never_calls_transport",
+      "tests/test_plan_regressions.py::test_positive_control_exactly_one_simulation"
+    ],
+    "coverage": "partial",
+    "gap": "Полная матрица вариантов контракта отдельно не подтверждена; область assertions указана в offline_boundary.",
+    "offline_boundary": "Покрыто: после discovery нет Gmail send; отправляется только точное отдельно одобренное действие."
+  },
+  {
+    "id": "TZ-18.09",
+    "priority": "P0",
+    "title": "Утверждения и цена",
+    "contract": "Валидны claims/proof refs; точные суммы берутся из каталога; запрещённые точные фразы проверяются отдельно.",
+    "semantic": "Нет выдуманных кейсов, результатов, цены или обещания вписаться в бюджет.",
+    "tests": [
+      "tests/test_outreach.py::test_inspect_explicit_reply_contact_and_cautious_offer",
+      "tests/test_catalog.py::test_empty_cases_are_unknown_and_do_not_create_proof",
+      "tests/test_catalog.py::test_owner_confirmed_no_case_uses_real_first_step_without_demo_promise"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Нет выдуманных кейсов, результатов, цены или обещания вписаться в бюджет.",
+    "offline_boundary": "Покрыто: нет «под ваш бюджет», известная/неизвестная цена раздельны, демо не выдумывается."
+  },
+  {
+    "id": "TZ-18.10",
+    "priority": "P0",
+    "title": "Доказательства",
+    "contract": "Несуществующий/чужой ID блокируется; версии и freshness проверены; stale вызывает пересмотр.",
+    "semantic": "Источник действительно подтверждает используемое утверждение; противоречие не скрыто.",
+    "tests": [
+      "tests/test_conversations.py::test_unverified_claim_ids_and_inferences_rejected",
+      "tests/test_catalog.py::test_actual_global_extracted_evidence_resolves_only_in_own_snapshot",
+      "tests/test_catalog.py::test_stale_or_contradictory_evidence_blocks_even_approved_dispatch",
+      "tests/test_agent.py::test_llm_unknown_citation_rejected"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Источник действительно подтверждает используемое утверждение; противоречие не скрыто.",
+    "offline_boundary": "Покрыто валидатор и финальный dispatch: stale/contradiction блокируются даже с отдельным approval; транспорт/реальная reservation не вызываются."
+  },
+  {
+    "id": "TZ-18.11",
+    "priority": "P1",
+    "title": "Просьба прислать информацию",
+    "contract": "На размеченном входе нет meeting_scheduled; action в разрешённом наборе.",
+    "semantic": "Подготовлена релевантная информация без выдуманного согласия на встречу.",
+    "tests": [
+      "tests/test_conversations.py::test_quoted_old_refusal_not_reapplied_and_duplicate_no_new_action",
+      "tests/test_plan_regressions.py::test_reply_contracts_have_persistent_observable_outcomes"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Подготовлена релевантная информация без выдуманного согласия на встречу.",
+    "offline_boundary": "Покрыто: send_information, stage=replied, один draft."
+  },
+  {
+    "id": "TZ-18.12",
+    "priority": "P0",
+    "title": "Вопрос о цене",
+    "contract": "Сумма/валюта совпадают с утверждёнными данными; unknown не заменён числом.",
+    "semantic": "Известная цена не скрыта за обязательным созвоном; зависимости объяснены.",
+    "tests": [
+      "tests/test_conversations.py::test_known_price_and_unknown_case_are_honest",
+      "tests/test_plan_regressions.py::test_reply_contracts_have_persistent_observable_outcomes"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Известная цена не скрыта за обязательным созвоном; зависимости объяснены.",
+    "offline_boundary": "Покрыто: известная цена не скрыта за обязательным созвоном; неизвестная не превращается в число."
+  },
+  {
+    "id": "TZ-18.13",
+    "priority": "P1",
+    "title": "Всё устраивает",
+    "contract": "На эталонном ответе pain не становится confirmed.",
+    "semantic": "Нет навязывания боли/встречи человеку, которого всё устраивает.",
+    "tests": [
+      "tests/test_conversations.py::test_satisfied_manual_process_creates_no_pain_or_meeting_draft"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Нет навязывания боли/встречи человеку, которого всё устраивает.",
+    "offline_boundary": "Покрыто: полная apply-проверка satisfied не подтверждает боль/интерес, не создаёт draft и не предлагает встречу."
+  },
+  {
+    "id": "TZ-18.14",
+    "priority": "P1",
+    "title": "Уже автоматизировано",
+    "contract": "Обновлены факты и версия контекста; прежнее действие invalidated.",
+    "semantic": "Агент пересмотрел гипотезу, не повторил прежний питч.",
+    "tests": [
+      "tests/test_conversations.py::test_automated_process_disproves_opportunity_need_with_inbound_reference"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Агент пересмотрел гипотезу, не повторил прежний питч.",
+    "offline_boundary": "Покрыто: явная автоматизация атомарно даёт Opportunity.need=disproved с inbound reference; прежнее письмо не повторяется. Наличие CRM само по себе не считается опровержением любой задачи."
+  },
+  {
+    "id": "TZ-18.15",
+    "priority": "P1",
+    "title": "Своевременный созвон",
+    "contract": "На эталонном полном контексте допустим propose_meeting.",
+    "semantic": "Цель встречи предметная; нет лишнего обязательного опроса.",
+    "tests": [
+      "tests/test_conversations.py::test_call_interest_does_not_schedule_and_readiness_no_bant"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Цель встречи предметная; нет лишнего обязательного опроса.",
+    "offline_boundary": "Покрыто readiness; предложение/согласование различаются."
+  },
+  {
+    "id": "TZ-18.16",
+    "priority": "P0",
+    "title": "Состояние встречи",
+    "contract": "Без подтверждённого времени/зоны нет scheduled; held требует отдельного события.",
+    "semantic": "Неоднозначные даты распознаны; недостающие детали уточняются.",
+    "tests": [
+      "tests/test_conversations.py::test_call_interest_does_not_schedule_and_readiness_no_bant",
+      "tests/test_plan_regressions.py::test_reply_contracts_have_persistent_observable_outcomes"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Неоднозначные даты распознаны; недостающие детали уточняются.",
+    "offline_boundary": "Покрыто: без времени не scheduled; дата+IANA timezone+confirmation дают UTC; held отдельным событием."
+  },
+  {
+    "id": "TZ-18.17",
+    "priority": "P0",
+    "title": "Рекомендованный сотрудник",
+    "contract": "Новый recipient проходит собственные eligibility и approval guards.",
+    "semantic": "Рекомендация не трактуется как полномочия/согласие нового человека.",
+    "tests": [
+      "tests/test_conversations.py::test_referral_preserves_source_without_contacting_new_employee"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Рекомендация не трактуется как полномочия/согласие нового человека.",
+    "offline_boundary": "Покрыто: referral сохраняется с источником, новый адресат не становится участником/разрешённым контактом и не получает action."
+  },
+  {
+    "id": "TZ-18.18",
+    "priority": "P0",
+    "title": "Интерес вместе с запретом",
+    "contract": "После запрета suppression применён, pending отменены, transport.calls=0.",
+    "semantic": "Смешанный ответ распознан: запрет важнее интереса.",
+    "tests": [
+      "tests/test_conversations.py::test_stop_priority_full_tail_and_atomic_cancellation",
+      "tests/test_policy.py::test_optout_interest_priority_and_persistent_pause_in_capsule",
+      "tests/test_plan_regressions.py::test_reply_contracts_have_persistent_observable_outcomes",
+      "tests/test_plan_regressions.py::test_suppression_survives_operation_sequences"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Смешанный ответ распознан: запрет важнее интереса.",
+    "offline_boundary": "Покрыто: suppression, cancel, terminal, interest counter не увеличивается."
+  },
+  {
+    "id": "TZ-18.19",
+    "priority": "P0",
+    "title": "Цитата старого отказа",
+    "contract": "MIME fixtures отделяют новый текст от quote; сохранённый suppression не снимается.",
+    "semantic": "Нет ложной интерпретации цитат/отрицаний как нового intent.",
+    "tests": [
+      "tests/test_conversations.py::test_quoted_old_refusal_not_reapplied_and_duplicate_no_new_action",
+      "tests/test_inbox.py::test_import_preserves_stop_at_end_but_removes_quoted_stop_and_signature",
+      "tests/test_plan_regressions.py::test_reply_contracts_have_persistent_observable_outcomes"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Нет ложной интерпретации цитат/отрицаний как нового intent.",
+    "offline_boundary": "Покрыто разбор нового текста; сохранённый suppression отдельно проверяется persistent state-тестами."
+  },
+  {
+    "id": "TZ-18.20",
+    "priority": "P0",
+    "title": "Автоответ и bounce",
+    "contract": "OOO/hard/soft bounce имеют разные события; нет цикла ответов и ложного human_reply.",
+    "semantic": "Сложный автоответ корректно распознан.",
+    "tests": [
+      "tests/test_conversations.py::test_auto_replies_and_bounces_never_interest",
+      "tests/test_inbox.py::test_auto_reply_and_delivery_notifications_are_distinct"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Сложный автоответ корректно распознан.",
+    "offline_boundary": "Покрыто."
+  },
+  {
+    "id": "TZ-18.21",
+    "priority": "P0",
+    "title": "Повторный inbound",
+    "contract": "Повтор event ID не создаёт вторые Decision/action/reply.",
+    "semantic": "—",
+    "tests": [
+      "tests/test_conversations.py::test_quoted_old_refusal_not_reapplied_and_duplicate_no_new_action",
+      "tests/test_state.py::test_inbound_idempotent_cancels_approved_action",
+      "tests/test_plan_regressions.py::test_reply_contracts_have_persistent_observable_outcomes"
+    ],
+    "coverage": "partial",
+    "gap": "Полная матрица вариантов контракта отдельно не подтверждена; область assertions указана в offline_boundary.",
+    "offline_boundary": "Покрыто: один event, одна версия контекста, один draft."
+  },
+  {
+    "id": "TZ-18.22",
+    "priority": "P0",
+    "title": "Принадлежность цепочки",
+    "contract": "Похожие темы другого sender не объединяются без подтверждения; headers проверяются.",
+    "semantic": "Неоднозначная привязка передана на разбор.",
+    "tests": [
+      "tests/test_conversations.py::test_similar_subject_different_sender_is_not_a_match",
+      "tests/test_inbox.py::test_matching_requires_identifiers_mailbox_and_participants"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Неоднозначная привязка передана на разбор.",
+    "offline_boundary": "Покрыто: требуются идентификаторы, mailbox и участники."
+  },
+  {
+    "id": "TZ-18.23",
+    "priority": "P0",
+    "title": "Новый/ручной ответ",
+    "contract": "Контекст обновлён; старые follow-up и approvals invalidated.",
+    "semantic": "Следующий шаг учитывает ответ, уже данный человеком.",
+    "tests": [
+      "tests/test_conversations.py::test_manual_operator_reply_holds_and_invalidates",
+      "tests/test_state.py::test_inbound_idempotent_cancels_approved_action",
+      "tests/test_plan_regressions.py::test_reply_contracts_have_persistent_observable_outcomes"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Следующий шаг учитывает ответ, уже данный человеком.",
+    "offline_boundary": "Покрыто: cancellation и human_handoff."
+  },
+  {
+    "id": "TZ-18.24",
+    "priority": "P0",
+    "title": "Гонка отписки и отправки",
+    "contract": "Два соединения SQLite, управляемые барьеры: зафиксированный до dispatch запрет блокирует send.",
+    "semantic": "—",
+    "tests": [
+      "tests/test_state.py::test_suppression_other_connection_before_dispatch",
+      "tests/test_state.py::test_suppression_after_reservation_before_transport",
+      "tests/test_inbox.py::test_smtp_thread_rechecks_after_login_before_message_send",
+      "tests/test_plan_regressions.py::test_suppression_survives_operation_sequences"
+    ],
+    "coverage": "partial",
+    "gap": "Полная матрица вариантов контракта отдельно не подтверждена; область assertions указана в offline_boundary.",
+    "offline_boundary": "Покрыто до внешнего handoff; уже переданную провайдеру отправку отозвать атомарно невозможно."
+  },
+  {
+    "id": "TZ-18.25",
+    "priority": "P0",
+    "title": "Падение во время отправки",
+    "contract": "После restart sending/uncertain не порождает слепой retry.",
+    "semantic": "—",
+    "tests": [
+      "tests/test_outreach.py::test_timeout_is_uncertain_and_is_not_retried",
+      "tests/test_outreach.py::test_outbox_persists_dedupe_after_crash_and_applies_suppression",
+      "tests/test_state.py::test_migration_real_legacy_schema_preserves_uncertain_and_suppression"
+    ],
+    "coverage": "partial",
+    "gap": "Полная матрица вариантов контракта отдельно не подтверждена; область assertions указана в offline_boundary.",
+    "offline_boundary": "Покрыто."
+  },
+  {
+    "id": "TZ-18.26",
+    "priority": "P0",
+    "title": "Миграция outbox",
+    "contract": "Реальная старая схема обновляется без потерь; initial dedupe/cooldown сохранены; reply возможен.",
+    "semantic": "—",
+    "tests": [
+      "tests/test_state.py::test_migration_real_legacy_schema_preserves_uncertain_and_suppression",
+      "tests/test_state.py::test_reply_requires_fresh_sync_and_skips_initial_cooldown"
+    ],
+    "coverage": "partial",
+    "gap": "Полная матрица вариантов контракта отдельно не подтверждена; область assertions указана в offline_boundary.",
+    "offline_boundary": "Покрыто: настоящая старая схема, integrity_check, сохранение suppression/uncertain."
+  },
+  {
+    "id": "TZ-18.27",
+    "priority": "P0",
+    "title": "Email headers",
+    "contract": "Уникальные RFC Message-ID; корректные In-Reply-To/References/provider/thread IDs.",
+    "semantic": "—",
+    "tests": [
+      "tests/test_inbox.py::test_gmail_reply_keeps_all_three_identifiers_and_headers_separate",
+      "tests/test_inbox.py::test_real_guard_rejects_changed_sender_metadata_before_gmail"
+    ],
+    "coverage": "partial",
+    "gap": "Полная матрица вариантов контракта отдельно не подтверждена; область assertions указана в offline_boundary.",
+    "offline_boundary": "Покрыто mock Gmail MIME и thread context."
+  },
+  {
+    "id": "TZ-18.28",
+    "priority": "P0",
+    "title": "Синхронизация почты",
+    "contract": "Scopes, cursor expiry, pagination, дубли; stale/failed sync блокирует dialogue send.",
+    "semantic": "—",
+    "tests": [
+      "tests/test_inbox.py::test_gmail_read_scope_error_and_unbounded_access_are_explicit",
+      "tests/test_inbox.py::test_gmail_history_is_opaque_filters_threads_and_handles_expiry",
+      "tests/test_inbox.py::test_gmail_history_pending_page_is_not_lost_at_batch_limit",
+      "tests/test_state.py::test_reply_requires_fresh_sync_and_skips_initial_cooldown"
+    ],
+    "coverage": "partial",
+    "gap": "Полная матрица вариантов контракта отдельно не подтверждена; область assertions указана в offline_boundary.",
+    "offline_boundary": "Покрыто без настоящих OAuth credentials."
+  },
+  {
+    "id": "TZ-18.29",
+    "priority": "P0",
+    "title": "Внешние инструкции",
+    "contract": "Инъекция не меняет policy/catalog и не вызывает запрещённый tool/выдачу canary-секрета.",
+    "semantic": "Вредная инструкция не принята за сведения или распоряжение владельца.",
+    "tests": [
+      "tests/test_inbox.py::test_json_import_is_inert_and_quote_aware",
+      "tests/test_qualification.py::test_llm_hostile_question_never_enters_outreach",
+      "tests/test_catalog.py::test_catalog_cannot_disable_approval_or_execute"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Вредная инструкция не принята за сведения или распоряжение владельца.",
+    "offline_boundary": "Покрыто инертные входные данные и ограниченный генератор."
+  },
+  {
+    "id": "TZ-18.30",
+    "priority": "P0",
+    "title": "Совместимость и dry-run",
+    "contract": "Legacy payload/config/CLI, CSV escaping; dry-run без send/реальной резервации; лимиты цикла работают.",
+    "semantic": "—",
+    "tests": [
+      "tests/test_legacy_acceptance.py::test_all_legacy_cli_commands_offline_preserve_progress_when_research_budget_ends",
+      "tests/test_catalog.py::test_legacy_config_and_research_stay_compatible",
+      "tests/test_v2_research.py::test_unknown_llm_cost_blocks_network_and_paid_budget_is_reserved"
+    ],
+    "coverage": "partial",
+    "gap": "Полная матрица вариантов контракта отдельно не подтверждена; область assertions указана в offline_boundary.",
+    "offline_boundary": "Покрыто: все старые команды CLI выполняются с общей фиксированной датой, fake crawler/search и запрещённой сетью; dry-run не создаёт отправку/approval, CSV экранируется, исчерпание max_research_steps сохраняет уже полученные данные и snapshots."
+  },
+  {
+    "id": "TZ-18.31",
+    "priority": "P1",
+    "title": "Бизнес-метрики",
+    "contract": "Счётчики и знаменатели воспроизводимы; auto/human/scheduled/held различаются.",
+    "semantic": "—",
+    "tests": [
+      "tests/test_policy.py::test_stats_derive_unique_events_separate_auto_human_and_meeting"
+    ],
+    "coverage": "partial",
+    "gap": "Полная матрица вариантов контракта отдельно не подтверждена; область assertions указана в offline_boundary.",
+    "offline_boundary": "Покрыто: auto/human, предложенная/назначенная/состоявшаяся встреча, denominator=0→unknown."
+  },
+  {
+    "id": "TZ-18.32",
+    "priority": "P0",
+    "title": "Полный offline цикл",
+    "contract": "Проверены БД, simulated send, sync, stats, approvals, meeting и brief на каждом шаге.",
+    "semantic": "Вся последовательность уместна и приводит к предметной передаче человеку.",
+    "tests": [
+      "tests/test_conversations.py::test_offline_full_lifecycle_has_separate_approvals_and_real_metrics"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Вся последовательность уместна и приводит к предметной передаче человеку.",
+    "offline_boundary": "Покрыто: public request→evidence→draft→отдельное approval→simulated initial→MIME price reply→новое approval→interest/task→stats/capsule→meeting proposal→отдельное approval→scheduled→brief→held. Сеть запрещена, simulated_sent не увеличивает реальные send counters."
+  },
+  {
+    "id": "TZ-18.33",
+    "priority": "P0",
+    "title": "Все пути исходящих",
+    "contract": "Параметризовать cold/public/reply/follow-up/manual/legacy; без approval нет внешнего действия.",
+    "semantic": "—",
+    "tests": [
+      "tests/test_inbox.py::test_delivery_without_approval_never_calls_transport",
+      "tests/test_state.py::test_exact_individual_approval_and_single_use",
+      "tests/test_v2_research.py::test_manual_copy_is_not_sent_and_mandatory_channel_cannot_be_bypassed",
+      "tests/test_conversations.py::test_stop_priority_full_tail_and_atomic_cancellation",
+      "tests/test_plan_regressions.py::test_reply_contracts_have_persistent_observable_outcomes",
+      "tests/test_plan_regressions.py::test_positive_control_exactly_one_simulation"
+    ],
+    "coverage": "partial",
+    "gap": "Полная матрица вариантов контракта отдельно не подтверждена; область assertions указана в offline_boundary.",
+    "offline_boundary": "Покрыто общий guard и отсутствие автоответа на отказ."
+  },
+  {
+    "id": "TZ-18.34",
+    "priority": "P0",
+    "title": "Точная версия approval",
+    "contract": "Текст, recipient, channel, attachments и значимые versions связаны с approval; изменение блокирует send; reuse не дублирует.",
+    "semantic": "—",
+    "tests": [
+      "tests/test_state.py::test_edit_and_relevant_catalog_invalidate",
+      "tests/test_state.py::test_final_catalog_reload_and_metadata_bound",
+      "tests/test_state.py::test_exact_individual_approval_and_single_use",
+      "tests/test_catalog.py::test_content_provenance_rejects_unreviewed_llm_text_and_edited_template",
+      "tests/test_plan_regressions.py::test_positive_control_exactly_one_simulation"
+    ],
+    "coverage": "partial",
+    "gap": "Полная матрица вариантов контракта отдельно не подтверждена; область assertions указана в offline_boundary.",
+    "offline_boundary": "Покрыто body и metadata, однократность; вложения безопасно запрещены до поддержанного delivery adapter."
+  },
+  {
+    "id": "TZ-18.35",
+    "priority": "P0",
+    "title": "Ожидание пользователя",
+    "contract": "Повтор tick без изменений не увеличивает LLM/approval calls; отказ пользователя не становится отказом клиента.",
+    "semantic": "—",
+    "tests": [
+      "tests/test_outreach.py::test_gmail_pipeline_queues_once_then_individually_approved_delivery",
+      "tests/test_state.py::test_operator_rejection_not_customer_rejection",
+      "tests/test_policy.py::test_stats_approval_does_not_invalidate_meaningful_source_version"
+    ],
+    "coverage": "partial",
+    "gap": "Полная матрица вариантов контракта отдельно не подтверждена; область assertions указана в offline_boundary.",
+    "offline_boundary": "Покрыто идемпотентная очередь, отсутствие LLM в tick и отдельное operator_rejected событие."
+  },
+  {
+    "id": "TZ-18.36",
+    "priority": "P0",
+    "title": "Цена и резерв",
+    "contract": "Проверить cache hit; атомарную резервацию до вызова, actual/release после; два workers не превышают бюджет.",
+    "semantic": "Повтор исследования оправдан только новой неопределённостью.",
+    "tests": [
+      "tests/test_v2_research.py::test_paid_search_reserves_all_queries_and_reuses_cache",
+      "tests/test_policy.py::test_budget_reserves_upper_reconciles_actual_and_keeps_unknown",
+      "tests/test_policy.py::test_budget_atomic_across_connections"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Повтор исследования оправдан только новой неопределённостью.",
+    "offline_boundary": "Покрыто, неопределённый billing сохраняет верхнюю оценку."
+  },
+  {
+    "id": "TZ-18.37",
+    "priority": "P0",
+    "title": "Unknown cost и полезность",
+    "contract": "Unknown не равен 0; нет суммы разных валют без курса; вызов блокируется без допустимого лимита.",
+    "semantic": "Выбор дешёвой альтернативы/defer/stop разумен; sunk cost не оправдывает продолжение.",
+    "tests": [
+      "tests/test_policy.py::test_unknown_paid_cost_is_not_free_and_optout_needs_no_paid_action",
+      "tests/test_policy.py::test_budget_reserves_upper_reconciles_actual_and_keeps_unknown",
+      "tests/test_acceptance_policy.py::test_low_usefulness_or_high_risk_waits_without_new_action"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Выбор дешёвой альтернативы/defer/stop разумен; sunk cost не оправдывает продолжение.",
+    "offline_boundary": "Покрыто: unknown paid cost не считается нулём; валюты проверяет BudgetLedger, низкая полезность/высокий риск дают defer/handoff без новой реплики."
+  },
+  {
+    "id": "TZ-18.38",
+    "priority": "P1",
+    "title": "CompanyStats",
+    "contract": "Event-ID dedupe; отдельные counters human/auto/refusal/case-request.",
+    "semantic": "Смысловые выводы в карточке точно отражают источники.",
+    "tests": [
+      "tests/test_policy.py::test_stats_derive_unique_events_separate_auto_human_and_meeting",
+      "tests/test_policy.py::test_optout_interest_priority_and_persistent_pause_in_capsule"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Смысловые выводы в карточке точно отражают источники.",
+    "offline_boundary": "Покрыто counters, case/price request, автоответ и opt-out."
+  },
+  {
+    "id": "TZ-18.39",
+    "priority": "P0",
+    "title": "Версии и финальность",
+    "contract": "Решение использует current stats_version; deferred и terminal различаются; suppression сохраняется.",
+    "semantic": "Условия возобновления сформулированы правильно.",
+    "tests": [
+      "tests/test_policy.py::test_terminal_defer_pause_and_commercial_boundaries",
+      "tests/test_policy.py::test_initial_public_request_queue_assessment_and_capsule",
+      "tests/test_state.py::test_inbound_idempotent_cancels_approved_action",
+      "tests/test_acceptance_policy.py::test_deferred_is_active_terminal_preserves_new_inbound_and_suppression"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Условия возобновления сформулированы правильно.",
+    "offline_boundary": "Покрыто: deferred остаётся активным до срока; terminal сохраняет новые события и suppression без возобновления плановых сообщений; версии проверяет final guard."
+  },
+  {
+    "id": "TZ-18.40",
+    "priority": "P0",
+    "title": "Длинное письмо",
+    "contract": "Суммарный prompt с system/tools в budget; stop в конце письма обработан либо hold.",
+    "semantic": "При извлечении не потерян существенный контекст.",
+    "tests": [
+      "tests/test_policy.py::test_context_counts_system_tools_and_preserves_long_tail_stop",
+      "tests/test_conversations.py::test_stop_priority_full_tail_and_atomic_cancellation"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: При извлечении не потерян существенный контекст.",
+    "offline_boundary": "Покрыто conservative UTF-8 byte token upper bound с system/tools."
+  },
+  {
+    "id": "TZ-18.41",
+    "priority": "P0",
+    "title": "Сжатие памяти",
+    "contract": "Суммы, валюты, даты, зоны, запреты и refs сохранены; пропуск критического поля даёт hold.",
+    "semantic": "Не потеряны отрицания, условия, смысл обещаний и степень уверенности.",
+    "tests": [
+      "tests/test_policy.py::test_capsule_critical_constraints_hold_instead_of_silent_truncation",
+      "tests/test_conversations.py::test_numeric_constraints_sources_preserved",
+      "tests/test_policy.py::test_material_policy_and_context_changes_require_review"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Не потеряны отрицания, условия, смысл обещаний и степень уверенности.",
+    "offline_boundary": "Покрыто без усечения критических полей."
+  },
+  {
+    "id": "TZ-18.42",
+    "priority": "P0",
+    "title": "Изменяемый INPUT",
+    "contract": "Новая услуга валидируется без Python-edit; invalid/partial write блокирует зависимые send.",
+    "semantic": "—",
+    "tests": [
+      "tests/test_catalog.py::test_edit_services_without_python_and_keep_unrelated_dependency",
+      "tests/test_catalog.py::test_invalid_partial_json_never_returns_old_snapshot",
+      "tests/test_catalog.py::test_catalog_change_between_inspection_and_queue_is_not_silently_approved"
+    ],
+    "coverage": "partial",
+    "gap": "Полная матрица вариантов контракта отдельно не подтверждена; область assertions указана в offline_boundary.",
+    "offline_boundary": "Покрыто."
+  },
+  {
+    "id": "TZ-18.43",
+    "priority": "P0",
+    "title": "Изменение материалов",
+    "contract": "Изменённый proof/right invalidates связанное действие; чужая услуга не сбрасывает несвязанный draft.",
+    "semantic": "—",
+    "tests": [
+      "tests/test_catalog.py::test_proof_rights_change_relevant_snapshot",
+      "tests/test_catalog.py::test_edit_services_without_python_and_keep_unrelated_dependency",
+      "tests/test_state.py::test_edit_and_relevant_catalog_invalidate"
+    ],
+    "coverage": "partial",
+    "gap": "Полная матрица вариантов контракта отдельно не подтверждена; область assertions указана в offline_boundary.",
+    "offline_boundary": "Покрыто адресная инвалидизация hash и dispatch guard."
+  },
+  {
+    "id": "TZ-18.44",
+    "priority": "P0",
+    "title": "Граница доверия INPUT",
+    "contract": "Нет исполнения кода/path traversal/policy override; inbound не может сам менять каталог.",
+    "semantic": "—",
+    "tests": [
+      "tests/test_catalog.py::test_catalog_cannot_disable_approval_or_execute",
+      "tests/test_catalog.py::test_material_path_cannot_escape_or_follow_escaping_symlink",
+      "tests/test_inbox.py::test_json_import_is_inert_and_quote_aware"
+    ],
+    "coverage": "partial",
+    "gap": "Полная матрица вариантов контракта отдельно не подтверждена; область assertions указана в offline_boundary.",
+    "offline_boundary": "Покрыто extra=forbid, JSON-only, путь/симлинки и инертный import."
+  },
+  {
+    "id": "TZ-18.45",
+    "priority": "P0",
+    "title": "Разные каналы",
+    "contract": "Нет adapter: awaiting_manual_send, не sent; обязательная площадка не обходится email.",
+    "semantic": "Выбран уместный разрешённый канал.",
+    "tests": [
+      "tests/test_v2_research.py::test_manual_copy_is_not_sent_and_mandatory_channel_cannot_be_bypassed",
+      "tests/test_outreach.py::test_required_platform_prepares_manual_draft_without_email_bypass",
+      "tests/test_outreach.py::test_mandatory_manual_channel_queues_when_email_transport_disabled_and_never_sends"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Выбран уместный разрешённый канал.",
+    "offline_boundary": "Покрыто: обязательная площадка/Telegram/LinkedIn готовят ручной черновик; отдельное approval переводит в awaiting_manual_send, sent_confirmed_by_user появляется только после отметки владельца; почтовый транспорт не вызывается. Официальные adapters остаются P2."
+  },
+  {
+    "id": "TZ-18.46",
+    "priority": "P0",
+    "title": "Общий suppression",
+    "contract": "Reply/mailto/HTTPS события приводят к одной политике и отмене pending; нет auto-confirmation.",
+    "semantic": "Естественная формулировка отказа интерпретирована с верным scope.",
+    "tests": [
+      "tests/test_unsubscribe.py::test_generated_mailto_mime_import_cancels_approved_action_without_confirmation",
+      "tests/test_conversations.py::test_stop_priority_full_tail_and_atomic_cancellation",
+      "tests/test_unsubscribe.py::test_colocated_optout_immediately_cancels_prepared_actions",
+      "tests/test_unsubscribe.py::test_durable_ledger_sync_suppresses_and_failed_sync_blocks"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Естественная формулировка отказа интерпретирована с верным scope.",
+    "offline_boundary": "Покрыто: сформированный mailto URL превращается в MIME и проходит import; точный subject-only отказ при пустом теле также действует. Одобренное действие отменяется, approval инвалидируется, повторный import идемпотентен и не создаёт ответного подтверждения."
+  },
+  {
+    "id": "TZ-18.47",
+    "priority": "P0*",
+    "title": "HTTPS endpoint",
+    "contract": "GET/HEAD без мутации; POST идемпотентен; неверный token не меняет чужие записи и не раскрывает email.",
+    "semantic": "—",
+    "tests": [
+      "tests/test_unsubscribe.py::test_scanner_get_head_and_forgery_never_opt_out_but_post_does"
+    ],
+    "coverage": "partial",
+    "gap": "Полная матрица вариантов контракта отдельно не подтверждена; область assertions указана в offline_boundary.",
+    "offline_boundary": "Покрыто ASGI offline."
+  },
+  {
+    "id": "TZ-18.48",
+    "priority": "P0*",
+    "title": "Готовность отписки",
+    "contract": "Без реально настроенной capability нет заявления verified one-click/подставного localhost URL.",
+    "semantic": "Текст честно описывает доступный способ отказа.",
+    "tests": [
+      "tests/test_unsubscribe.py::test_mailto_is_honest_and_fake_https_is_not_ready"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Текст честно описывает доступный способ отказа.",
+    "offline_boundary": "Покрыто capability/readiness; фактическое размещение и DKIM требуют окружения владельца."
+  },
+  {
+    "id": "TZ-18.49",
+    "priority": "P0*",
+    "title": "Внешний ledger отказов",
+    "contract": "Обязательный opt-out sync до send; failure/stale ставит hold; cursor/dedupe проверены.",
+    "semantic": "—",
+    "tests": [
+      "tests/test_unsubscribe.py::test_durable_ledger_sync_suppresses_and_failed_sync_blocks"
+    ],
+    "coverage": "partial",
+    "gap": "Полная матрица вариантов контракта отдельно не подтверждена; область assertions указана в offline_boundary.",
+    "offline_boundary": "Покрыто durable ledger/cursor/dedupe и secret-protected interface."
+  },
+  {
+    "id": "TZ-18.50",
+    "priority": "P0",
+    "title": "Происхождение кейса",
+    "contract": "proof.type/owner/permissions валидны и сохранены.",
+    "semantic": "Клиентский кейс, опыт участника и тестовое демо не смешаны.",
+    "tests": [
+      "tests/test_catalog.py::test_client_team_and_demo_proof_remain_separate",
+      "tests/test_conversations.py::test_proof_demo_label_rights_and_nda"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Клиентский кейс, опыт участника и тестовое демо не смешаны.",
+    "offline_boundary": "Покрыто параметризация трёх типов и прямые оговорки происхождения."
+  },
+  {
+    "id": "TZ-18.51",
+    "priority": "P0",
+    "title": "Пустой реестр кейсов",
+    "contract": "Пустой массив даёт unknown, не none_confirmed; отсутствующее demo не прикрепляется.",
+    "semantic": "Честный ответ без выдумки; реально доступная альтернатива.",
+    "tests": [
+      "tests/test_catalog.py::test_empty_cases_are_unknown_and_do_not_create_proof",
+      "tests/test_catalog.py::test_owner_confirmed_no_case_uses_real_first_step_without_demo_promise",
+      "tests/test_conversations.py::test_known_price_and_unknown_case_are_honest"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Честный ответ без выдумки; реально доступная альтернатива.",
+    "offline_boundary": "Покрыто unknown/none_confirmed, реальные first_steps, отсутствие выдуманного готового демо."
+  },
+  {
+    "id": "TZ-18.52",
+    "priority": "P0",
+    "title": "NDA и права",
+    "contract": "Forbidden asset не попадает во вложения/выборку; canary-детали отсутствуют.",
+    "semantic": "Нет пересказа запрещённых деталей/выдуманного объяснения про NDA.",
+    "tests": [
+      "tests/test_conversations.py::test_proof_demo_label_rights_and_nda"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Нет пересказа запрещённых деталей/выдуманного объяснения про NDA.",
+    "offline_boundary": "Покрыто неразрешённый материал не предлагается; шаблоны не выдумывают NDA как объяснение."
+  },
+  {
+    "id": "TZ-18.53",
+    "priority": "P1",
+    "title": "Обязательный сопоставимый кейс",
+    "contract": "На эталонном несоответствии фиксируется unmet requirement и handoff/close.",
+    "semantic": "Пилот не навязывается как замена обязательному критерию.",
+    "tests": [
+      "tests/test_conversations.py::test_mandatory_case_needs_comparability_not_just_service",
+      "tests/test_conversations.py::test_known_price_and_unknown_case_are_honest"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Пилот не навязывается как замена обязательному критерию.",
+    "offline_boundary": "Покрыто unknown/несовпадение процесса, отрасли, масштаба → handoff."
+  },
+  {
+    "id": "TZ-18.54",
+    "priority": "P0",
+    "title": "Репутация канала",
+    "contract": "Сигнал имеет source/as_of; unknown не превращён в perfect; policy hold действует; нет обхода сменой sender.",
+    "semantic": "Сила вывода соответствует малой выборке и качеству сведений.",
+    "tests": [
+      "tests/test_policy.py::test_stats_derive_unique_events_separate_auto_human_and_meeting",
+      "tests/test_policy.py::test_material_policy_and_context_changes_require_review",
+      "tests/test_acceptance_policy.py::test_sourced_channel_complaint_holds_without_rotating_sender"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Сила вывода соответствует малой выборке и качеству сведений.",
+    "offline_boundary": "Покрыто: неизвестные метрики unknown; sourced complaint обновляет stats и останавливает контакт без смены sender."
+  },
+  {
+    "id": "TZ-18.55",
+    "priority": "P0",
+    "title": "Адресное извлечение",
+    "contract": "В prompt нет полного ТЗ/архива; выбираются только релевантные разрешённые assets; budget измерен.",
+    "semantic": "Извлечённого контекста достаточно для честного ответа.",
+    "tests": [
+      "tests/test_catalog.py::test_runtime_prompt_capture_excludes_unrelated_catalog_archives_and_spec",
+      "tests/test_policy.py::test_context_counts_system_tools_and_preserves_long_tail_stop"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Извлечённого контекста достаточно для честного ответа.",
+    "offline_boundary": "Покрыто фактический mock LLM request-capture: нерелевантная услуга/кейс, архивное письмо и developer-spec sentinel отсутствуют; проверены selected-case refs и общий бюджет с system/tools."
+  },
+  {
+    "id": "TZ-18.56",
+    "priority": "P0",
+    "title": "Pause/resume",
+    "contract": "Глобальная/локальная pause переживает restart; resume не снимает suppression и не retry uncertain/expired approval.",
+    "semantic": "—",
+    "tests": [
+      "tests/test_state.py::test_pause_persistent_and_expired_approval_not_restored",
+      "tests/test_outreach.py::test_timeout_is_uncertain_and_is_not_retried",
+      "tests/test_state.py::test_smtp_thread_uses_own_connection_and_final_pause",
+      "tests/test_plan_regressions.py::test_suppression_survives_operation_sequences"
+    ],
+    "coverage": "partial",
+    "gap": "Полная матрица вариантов контракта отдельно не подтверждена; область assertions указана в offline_boundary.",
+    "offline_boundary": "Покрыто глобальная/локальная пауза и финальная проверка потока."
+  },
+  {
+    "id": "TZ-18.57",
+    "priority": "P0",
+    "title": "Human takeover",
+    "contract": "Исходящие предложения приостановлены; входящие/отказы обрабатываются; ручной ответ не дублируется.",
+    "semantic": "—",
+    "tests": [
+      "tests/test_conversations.py::test_manual_operator_reply_holds_and_invalidates",
+      "tests/test_conversations.py::test_forged_operator_flag_cannot_attach_other_sender",
+      "tests/test_conversations.py::test_takeover_still_processes_optout_without_owner_approval",
+      "tests/test_plan_regressions.py::test_suppression_survives_operation_sequences"
+    ],
+    "coverage": "partial",
+    "gap": "Полная матрица вариантов контракта отдельно не подтверждена; область assertions указана в offline_boundary.",
+    "offline_boundary": "Покрыто: takeover останавливает подготовку новых исходящих, оба inbound сохраняются, отказ применяется немедленно без approval; ручной ответ инвалидирует старое действие."
+  },
+  {
+    "id": "TZ-18.58",
+    "priority": "P0",
+    "title": "Конфликт участников",
+    "contract": "Сохранены author/role/scope/source; спорное действие на hold.",
+    "semantic": "Не выбран удобный положительный ответ вопреки запрету/конфликту.",
+    "tests": [
+      "tests/test_conversations.py::test_participant_budget_conflict_is_preserved_with_sources",
+      "tests/test_conversations.py::test_company_refusal_from_unverified_role_stops_pending_and_keeps_source"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Не выбран удобный положительный ответ вопреки запрету/конфликту.",
+    "offline_boundary": "Покрыто: конфликт бюджетов сохраняет оба источника/роли и manual_review; общий запрет с unknown ролью блокирует спорное действие, последующее приглашение другого участника запрет не снимает."
+  },
+  {
+    "id": "TZ-18.59",
+    "priority": "P0",
+    "title": "Загрузка исполнителя",
+    "contract": "Unknown/exhausted availability блокирует обещание старта; capacity cap не блокирует refusals/inbound.",
+    "semantic": "Обещания реалистичны; ожидание предложено по известным данным.",
+    "tests": [
+      "tests/test_policy.py::test_terminal_defer_pause_and_commercial_boundaries",
+      "tests/test_acceptance_policy.py::test_capacity_blocks_new_attempts_but_existing_reply_and_optout_processed"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Обещания реалистичны; ожидание предложено по известным данным.",
+    "offline_boundary": "Покрыто: лимит новых возможностей не блокирует существующий вопрос/отказ, неизвестная доступность не позволяет обещать старт."
+  },
+  {
+    "id": "TZ-18.60",
+    "priority": "P0",
+    "title": "Новые коммерческие условия",
+    "contract": "Нет новых скидок/гарантий/сроков/договора/payment-action без конкретного разрешения владельца.",
+    "semantic": "Свободный текст не берёт неутверждённые обязательства.",
+    "tests": [
+      "tests/test_conversations.py::test_new_commercial_terms_hand_off_without_new_commitments",
+      "tests/test_catalog.py::test_content_provenance_rejects_unreviewed_llm_text_and_edited_template"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Свободный текст не берёт неутверждённые обязательства.",
+    "offline_boundary": "Покрыто: отдельные inbound скидки/гарантии/NDA/договора/нового срока/бесплатного пилота ведут к владельцу без outgoing commitments; exact owner content review требуется отдельно от send approval."
+  },
+  {
+    "id": "TZ-18.61",
+    "priority": "P0",
+    "title": "Идентичность отправителя",
+    "contract": "sender/signature из утверждённых данных; change invalidates approval.",
+    "semantic": "Нет выдуманного сотрудника, опыта команды или личной работы человека.",
+    "tests": [
+      "tests/test_catalog.py::test_effective_sender_fallback_is_included_in_dependency_hash",
+      "tests/test_catalog.py::test_related_price_and_sender_changes_invalidate",
+      "tests/test_catalog.py::test_legacy_config_and_research_stay_compatible",
+      "tests/test_inbox.py::test_real_guard_rejects_changed_sender_metadata_before_gmail"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Нет выдуманного сотрудника, опыта команды или личной работы человека.",
+    "offline_boundary": "Покрыто версионирование фактически используемого sender/signature без создания сотрудника."
+  },
+  {
+    "id": "TZ-18.62",
+    "priority": "P0",
+    "title": "Отложенная отправка",
+    "contract": "Window/timezone/TTL/version/sync/cost/stop перепроверены; open window не воскрешает expired approval.",
+    "semantic": "Факты и повод после паузы всё ещё релевантны.",
+    "tests": [
+      "tests/test_state.py::test_pause_persistent_and_expired_approval_not_restored",
+      "tests/test_state.py::test_final_catalog_reload_and_metadata_bound",
+      "tests/test_policy.py::test_material_policy_and_context_changes_require_review",
+      "tests/test_acceptance_policy.py::test_window_reopening_does_not_restore_expired_approval",
+      "tests/test_acceptance_policy.py::test_transport_rechecks_window_and_permission_after_reservation"
+    ],
+    "coverage": "partial",
+    "gap": "Не выполнена смысловая оценка: Факты и повод после паузы всё ещё релевантны.",
+    "offline_boundary": "Покрыто: fake clock проверяет открытие окна с expired approval и закрытие окна между reservation и transport handoff; запреты не снимаются."
+  }
+]

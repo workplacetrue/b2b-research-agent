@@ -1,0 +1,22 @@
+{
+  "llm": {
+    "enabled": true,
+    "base_url": "https://api.openai.com/v1",
+    "api_key_env": "B2B_EVAL_API_KEY",
+    "model": "SET_MODEL"
+  },
+  "outreach": {"enabled": false},
+  "inbox": {"enabled": false},
+  "budget": {
+    "max_run_cost": 0,
+    "max_campaign_cost": 0,
+    "max_llm_calls": 6,
+    "max_tokens": 100000,
+    "tool_prices": {}
+  },
+  "memory": {
+    "input_tokens": 30000,
+    "context_window": 64000,
+    "response_reserve_tokens": 2000
+  }
+}

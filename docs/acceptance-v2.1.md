@@ -70,3 +70,7 @@
 | 62 | Окно/TTL/возобновление требуют повторной проверки | `tests/test_state.py::test_pause_persistent_and_expired_approval_not_restored`; `tests/test_state.py::test_final_catalog_reload_and_metadata_bound`; `tests/test_policy.py::test_material_policy_and_context_changes_require_review` ; `tests/test_acceptance_policy.py::test_window_reopening_does_not_restore_expired_approval; tests/test_acceptance_policy.py::test_transport_rechecks_window_and_permission_after_reservation` | Покрыто: fake clock проверяет открытие окна с expired approval и закрытие окна между reservation и transport handoff; запреты не снимаются. |
 
 Матрица сопоставляет обязательные сценарии с offline-проверками. Она не означает, что перечисленные функции проверяли внешние сервисы. SMTP/Gmail OAuth, публичный HTTPS unsubscribe endpoint, DKIM, реальные слоты и производственная загрузка настраиваются владельцем отдельно; локальные offline-проверки не выдают их за выполненную внешнюю интеграцию.
+
+## Уточнение покрытия от 17 ноября
+
+Исходные строки выше показывают конкретные offline assertions. Полный контракт каждого сценария, смысловая оценка и live-проверки разделены в [новом контуре](../evaluation/README.md). Машиночитаемая [матрица](../evaluation/scenarios.json) отмечает coverage=partial; фактические результаты сопоставления появляются только после run_acceptance, а отсутствующий test ref считается ошибкой стенда.

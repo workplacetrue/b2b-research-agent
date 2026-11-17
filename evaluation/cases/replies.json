@@ -1,0 +1,8 @@
+[
+  {"id":"stop_interest","requirements":[18,23,33],"body":"Интересно, но больше не пишите мне.","required_labels":["opt_out"],"forbidden_labels":[],"suppressed":true},
+  {"id":"remove","requirements":[18],"body":"Удалите меня","required_labels":["opt_out"],"forbidden_labels":[],"suppressed":true},
+  {"id":"do_not_remove","requirements":[12,19],"body":"Не удаляйте, пришлите стоимость","required_labels":["price_question"],"forbidden_labels":["opt_out"],"suppressed":false},
+  {"id":"quoted_stop","requirements":[19],"body":"Пришлите материалы\n> Не пишите мне больше","required_labels":["information_request"],"forbidden_labels":["opt_out","meeting_interest"],"suppressed":false},
+  {"id":"information_not_meeting","requirements":[11,16],"body":"Пришлите материалы","required_labels":["information_request"],"forbidden_labels":["meeting_interest"],"suppressed":false},
+  {"id":"ambiguous_meeting","requirements":[16],"body":"Давайте завтра","required_labels":["ambiguous"],"forbidden_labels":["opt_out"],"suppressed":false}
+]
